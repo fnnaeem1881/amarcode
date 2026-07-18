@@ -1,5 +1,14 @@
 import { ProviderError } from "./types.js";
 
+/**
+ * Time-to-first-byte allowance for streaming requests. Local backends (Ollama,
+ * LM Studio) may withhold the HTTP response until the model is loaded and the
+ * first token is produced, which can take minutes for large models. A short
+ * total timeout would abort mid-generation, so streaming uses this generous
+ * ceiling and relies on the caller's AbortSignal for real cancellation.
+ */
+export const STREAM_TIMEOUT_MS = 600_000;
+
 export interface FetchOptions {
   method?: string;
   headers?: Record<string, string>;

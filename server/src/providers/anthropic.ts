@@ -11,7 +11,7 @@ import type {
   ToolCall,
 } from "@amarcode/shared";
 import { AIProvider, ProviderError, estimateTokens } from "./types.js";
-import { apiFetch, apiJson, parseSSE } from "./http.js";
+import { apiFetch, apiJson, parseSSE, STREAM_TIMEOUT_MS } from "./http.js";
 import { nanoid } from "nanoid";
 
 /** Native Anthropic Messages API (tool use + streaming). */
@@ -81,7 +81,7 @@ export class AnthropicProvider implements AIProvider {
   async *streamChat(messages: ChatMessageInput[], opts: GenerationOptions, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
     const res = await apiFetch(`${this.base()}/messages`, {
       method: "POST", headers: { ...this.headers(), accept: "text/event-stream" },
-      body: this.body(messages, opts, true), providerId: this.config.id, timeoutMs: this.config.timeoutMs, maxRetries: 0, signal,
+      body: this.body(messages, opts, true), providerId: this.config.id, timeoutMs: STREAM_TIMEOUT_MS, maxRetries: 0, signal,
     });
 
     let text = "";

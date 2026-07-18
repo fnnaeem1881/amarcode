@@ -11,7 +11,7 @@ import type {
   ToolCall,
 } from "@amarcode/shared";
 import { AIProvider, estimateTokens } from "./types.js";
-import { apiFetch, apiJson } from "./http.js";
+import { apiFetch, apiJson, STREAM_TIMEOUT_MS } from "./http.js";
 import { nanoid } from "nanoid";
 
 /** Native Ollama API for fully-local, offline operation. */
@@ -30,11 +30,16 @@ export class OllamaProvider implements AIProvider {
   }
 
   private body(messages: ChatMessageInput[], opts: GenerationOptions, stream: boolean) {
+    // Ollama defaults num_ctx to ~2048 and SILENTLY truncates larger prompts,
+    // which drops the system prompt/tool instructions and breaks tool calling.
+    // Size the context window to the actual prompt (+ output headroom), capped.
+    const promptTokens = messages.reduce((s, m) => s + estimateTokens(m.content ?? ""), 0);
+    const numCtx = Math.min(32_768, Math.max(4096, promptTokens + (opts.maxOutputTokens ?? 1024) + 1024));
     const body: Record<string, unknown> = {
       model: opts.model,
       messages: messages.map(toOllamaMessage),
       stream,
-      options: { temperature: opts.temperature, top_p: opts.topP, num_predict: opts.maxOutputTokens },
+      options: { temperature: opts.temperature, top_p: opts.topP, num_predict: opts.maxOutputTokens, num_ctx: numCtx },
     };
     if (opts.jsonMode) body.format = "json";
     if (opts.tools?.length) {
@@ -64,7 +69,7 @@ export class OllamaProvider implements AIProvider {
     // Ollama streams newline-delimited JSON (not SSE).
     const res = await apiFetch(`${this.base()}/api/chat`, {
       method: "POST", body: this.body(messages, opts, true),
-      providerId: this.config.id, timeoutMs: this.config.timeoutMs ?? 120_000, maxRetries: 0, signal,
+      providerId: this.config.id, timeoutMs: STREAM_TIMEOUT_MS, maxRetries: 0, signal,
     });
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();

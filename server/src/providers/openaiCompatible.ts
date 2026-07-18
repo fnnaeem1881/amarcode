@@ -11,7 +11,7 @@ import type {
   ToolCall,
 } from "@amarcode/shared";
 import { AIProvider, estimateTokens } from "./types.js";
-import { apiFetch, apiJson, parseSSE } from "./http.js";
+import { apiFetch, apiJson, parseSSE, STREAM_TIMEOUT_MS } from "./http.js";
 import { nanoid } from "nanoid";
 
 /**
@@ -130,7 +130,7 @@ export class OpenAICompatibleProvider implements AIProvider {
       headers: { ...this.headers(), accept: "text/event-stream" },
       body: this.body(messages, opts, true),
       providerId: this.config.id,
-      timeoutMs: this.config.timeoutMs,
+      timeoutMs: STREAM_TIMEOUT_MS,
       maxRetries: 0,
       signal,
     });

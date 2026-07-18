@@ -11,7 +11,7 @@ import type {
   ToolCall,
 } from "@amarcode/shared";
 import { AIProvider, estimateTokens } from "./types.js";
-import { apiFetch, apiJson, parseSSE } from "./http.js";
+import { apiFetch, apiJson, parseSSE, STREAM_TIMEOUT_MS } from "./http.js";
 import { nanoid } from "nanoid";
 
 /** Native Google Gemini API (generateContent + function calling + streaming). */
@@ -82,7 +82,7 @@ export class GeminiProvider implements AIProvider {
     const url = `${this.base()}/models/${opts.model}:streamGenerateContent?alt=sse&key=${this.key()}`;
     const res = await apiFetch(url, {
       method: "POST", headers: { accept: "text/event-stream" }, body: this.body(messages, opts),
-      providerId: this.config.id, timeoutMs: this.config.timeoutMs, maxRetries: 0, signal,
+      providerId: this.config.id, timeoutMs: STREAM_TIMEOUT_MS, maxRetries: 0, signal,
     });
     let text = "";
     const toolCalls: ToolCall[] = [];

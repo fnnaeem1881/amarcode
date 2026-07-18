@@ -43,7 +43,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
   const maxIterations = opts.maxIterations ?? 12;
 
   const ctx = await contextManager.build({
-    root, task, maxTokens: opts.maxTokens ?? 16000, recentMessages: [],
+    root, task, maxTokens: opts.maxTokens ?? 16000, maxFiles: opts.maxTokens ? 8 : 5, recentMessages: [],
   });
 
   const fileContext = ctx.files
