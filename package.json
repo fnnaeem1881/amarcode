@@ -1,0 +1,25 @@
+{
+  "name": "amarcode",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Coding Assistant (Claude Code style) — modular indexing, retrieval, planning, tool execution and a multi-provider AI layer.",
+  "workspaces": [
+    "server",
+    "web",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace shared run build && npm --workspace server run build && npm --workspace web run build",
+    "typecheck": "npm --workspace shared run typecheck && npm --workspace server run typecheck && npm --workspace web run typecheck",
+    "test": "npm --workspace server run test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
