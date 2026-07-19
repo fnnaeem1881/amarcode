@@ -16,6 +16,17 @@ export function listSessions(projectRoot: string): ChatSession[] {
   return rows.map(rowToSession);
 }
 
+/** Every session across all projects (for the Claude-Code-style global list). */
+export function listAllSessions(): ChatSession[] {
+  const rows = db().prepare("SELECT * FROM sessions ORDER BY updated_at DESC").all() as any[];
+  return rows.map(rowToSession);
+}
+
+export function deleteSession(id: string): void {
+  db().prepare("DELETE FROM messages WHERE session_id = ?").run(id);
+  db().prepare("DELETE FROM sessions WHERE id = ?").run(id);
+}
+
 export function getSession(id: string): ChatSession | undefined {
   const row = db().prepare("SELECT * FROM sessions WHERE id = ?").get(id) as any;
   return row ? rowToSession(row) : undefined;

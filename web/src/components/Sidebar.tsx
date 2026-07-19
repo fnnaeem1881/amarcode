@@ -4,7 +4,7 @@ interface FileRow { path: string; language: string; size: number; symbols: numbe
 
 /** Left rail — mirrors the Claude Code desktop: Home (sessions) / Code (files). */
 export function Sidebar({
-  tab, setTab, projectName, sessions, activeSessionId, onSelectSession, onNewSession,
+  tab, setTab, projectName, sessions, activeSessionId, onSelectSession, onNewSession, onDeleteSession,
   metadata, files, onOpenFile, onOpenProject, onSettings, activePath,
 }: {
   tab: "home" | "code";
@@ -14,6 +14,7 @@ export function Sidebar({
   activeSessionId: string | null;
   onSelectSession: (s: ChatSession) => void;
   onNewSession: () => void;
+  onDeleteSession: (id: string) => void;
   metadata: ProjectMetadata | null;
   files: FileRow[];
   onOpenFile: (path: string) => void;
@@ -21,6 +22,7 @@ export function Sidebar({
   onSettings: () => void;
   activePath: string | null;
 }) {
+  const projOf = (root: string) => root.split(/[\\/]/).filter(Boolean).pop() ?? root;
   return (
     <div className="sidebar">
       <div className="sb-brand">
@@ -44,9 +46,14 @@ export function Sidebar({
           {sessions.length === 0 && <div className="hint" style={{ padding: "4px 14px" }}>No sessions yet.</div>}
           {sessions.map((s) => (
             <div key={s.id} className={`sb-session ${activeSessionId === s.id ? "active" : ""}`}
-              onClick={() => onSelectSession(s)} title={new Date(s.updatedAt).toLocaleString()}>
+              onClick={() => onSelectSession(s)} title={`${projOf(s.projectRoot)} · ${new Date(s.updatedAt).toLocaleString()}`}>
               {activeSessionId === s.id && <span className="dot" />}
-              <span className="title">{s.title}</span>
+              <div className="sb-session-text">
+                <span className="title">{s.title}</span>
+                <span className="proj">{projOf(s.projectRoot)}</span>
+              </div>
+              <button className="sb-del" title="Delete session"
+                onClick={(e) => { e.stopPropagation(); if (confirm(`Delete session "${s.title}"?`)) onDeleteSession(s.id); }}>✕</button>
             </div>
           ))}
         </div>

@@ -20,7 +20,7 @@ export function App() {
   const [status, setStatus] = useState("");
 
   const [providers, setProviders] = useState<SafeProviderConfig[]>([]);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
   const [session, setSession] = useState<ChatSession | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"home" | "code">("home");
 
@@ -41,10 +41,19 @@ export function App() {
     const s = new AgentSocket();
     s.connect().then(() => (socketRef.current = s)).catch(() => setStatus("engine offline"));
     api.listProviders().then(setProviders).catch(() => {});
+    // Load every session across all projects (Claude-Code-style global list).
+    api.allSessions().then((list) => {
+      setAllSessions(list);
+      // Restore the most recent session; its project becomes the active root.
+      if (list.length && !localStorage.getItem("root")) {
+        setSession(list[0]);
+        setRoot(list[0].projectRoot);
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (root) { localStorage.setItem("root", root); void openProject(root); }
+    if (root) { localStorage.setItem("root", root); void loadProjectData(root); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [root]);
 
@@ -67,7 +76,9 @@ export function App() {
 
   useEffect(() => { refreshGit(); }, [refreshGit, gitRefreshKey]);
 
-  async function openProject(dir: string) {
+  // Scan/index a project directory and load its metadata + git. Auto-detects
+  // an existing git repo via the git status endpoint (no init needed).
+  async function loadProjectData(dir: string) {
     setStatus("scanning…");
     try {
       const meta = await api.scan(dir);
@@ -78,20 +89,47 @@ export function App() {
       setStatus("embedding…");
       await api.embed(dir);
       setMemory(await api.memory(dir).catch(() => null));
-      const list = await api.sessions(dir).catch(() => []);
-      if (list.length) { setSessions(list); setSession(list[0]); }
-      else { const s = await api.createSession(dir, "New chat"); setSessions([s]); setSession(s); }
+      setGitRefreshKey((k) => k + 1); // auto-detect git for the new project
       setStatus("ready");
     } catch (e) {
       setStatus(`error: ${e instanceof Error ? e.message : e}`);
     }
   }
 
+  // Open a project from the picker: switch root and select/create its session.
+  async function openProjectFromPicker(dir: string) {
+    setRoot(dir);
+    const list = await api.sessions(dir).catch(() => []);
+    if (list.length) setSession(list[0]);
+    else {
+      const s = await api.createSession(dir, "New chat");
+      setAllSessions((xs) => [s, ...xs]);
+      setSession(s);
+    }
+    api.allSessions().then(setAllSessions).catch(() => {});
+  }
+
+  // Selecting a session switches the working directory to that session's project.
+  function selectSession(s: ChatSession) {
+    setSession(s);
+    if (s.projectRoot !== root) setRoot(s.projectRoot);
+  }
+
   async function newSession() {
     if (!root) { setShowPicker(true); return; }
-    const s = await api.createSession(root, `Chat ${sessions.length + 1}`);
-    setSessions((xs) => [s, ...xs]);
+    const s = await api.createSession(root, "New chat");
+    setAllSessions((xs) => [s, ...xs]);
     setSession(s);
+  }
+
+  async function deleteSession(id: string) {
+    await api.deleteSession(id).catch(() => {});
+    setAllSessions((xs) => xs.filter((s) => s.id !== id));
+    if (session?.id === id) {
+      const next = allSessions.find((s) => s.id !== id) ?? null;
+      setSession(next);
+      if (next && next.projectRoot !== root) setRoot(next.projectRoot);
+    }
   }
 
   async function openFile(path: string) {
@@ -122,8 +160,8 @@ export function App() {
       <Sidebar
         tab={sidebarTab} setTab={setSidebarTab}
         projectName={projectName}
-        sessions={sessions} activeSessionId={session?.id ?? null}
-        onSelectSession={setSession} onNewSession={newSession}
+        sessions={allSessions} activeSessionId={session?.id ?? null}
+        onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession}
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
         onOpenProject={() => setShowPicker(true)} onSettings={() => setShowSettings(true)}
       />
@@ -151,7 +189,7 @@ export function App() {
               onOpenProject={() => setShowPicker(true)}
               onTitle={(title) => {
                 if (!session) return;
-                setSessions((xs) => xs.map((s) => (s.id === session.id ? { ...s, title } : s)));
+                setAllSessions((xs) => xs.map((s) => (s.id === session.id ? { ...s, title } : s)));
                 setSession((s) => (s ? { ...s, title } : s));
                 api.renameSession(session.id, title).catch(() => {});
               }}
@@ -179,7 +217,7 @@ export function App() {
         </div>
       </div>
 
-      {showPicker && <ProjectPicker onPick={(dir) => { setShowPicker(false); setRoot(dir); }} onClose={() => setShowPicker(false)} />}
+      {showPicker && <ProjectPicker onPick={(dir) => { setShowPicker(false); openProjectFromPicker(dir); }} onClose={() => setShowPicker(false)} />}
       {showSettings && <Settings onClose={() => { setShowSettings(false); api.listProviders().then(setProviders); }} />}
     </div>
   );

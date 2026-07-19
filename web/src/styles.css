@@ -44,8 +44,13 @@ input, select, textarea { font-family: inherit; }
 .sb-session:hover { background: var(--bg-panel); }
 .sb-session.active { background: var(--bg-panel); }
 .sb-session .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.sb-session-text { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .sb-session .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-session .proj { font-size: 10px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-session.active .title { color: var(--text); font-weight: 500; }
+.sb-del { background: transparent; border: none; color: var(--text-dim); border-radius: 4px; padding: 0 5px; opacity: 0; flex-shrink: 0; }
+.sb-session:hover .sb-del { opacity: 1; }
+.sb-del:hover { color: var(--red); background: var(--bg); }
 .sb-file { padding: 4px 14px; cursor: pointer; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-file:hover { background: var(--bg-panel); }
 .sb-file.active { background: #094771; }
