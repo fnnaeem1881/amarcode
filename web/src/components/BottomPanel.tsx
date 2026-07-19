@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Plan } from "@amarcode/shared";
 import { GitPanel } from "./GitPanel.js";
 
-type Tab = "terminal" | "problems" | "git" | "output" | "memory" | "plan";
+type Tab = "editor" | "terminal" | "problems" | "git" | "output" | "memory" | "plan";
 
 export function BottomPanel({
-  root, terminal, output, problems, memory, plan, gitRefreshKey,
+  root, terminal, output, problems, memory, plan, gitRefreshKey, activePath, content,
 }: {
   root: string;
   terminal: string;
@@ -14,9 +14,13 @@ export function BottomPanel({
   memory: any;
   plan: Plan | null;
   gitRefreshKey: number;
+  activePath?: string | null;
+  content?: string;
 }) {
-  const [tab, setTab] = useState<Tab>("terminal");
-  const tabs: Tab[] = ["terminal", "problems", "git", "output", "memory", "plan"];
+  const [tab, setTab] = useState<Tab>("git");
+  const tabs: Tab[] = ["editor", "terminal", "problems", "git", "output", "memory", "plan"];
+  // When a file is opened, jump to the editor tab.
+  useEffect(() => { if (activePath) setTab("editor"); }, [activePath]);
 
   return (
     <div className="bottom">
@@ -28,6 +32,11 @@ export function BottomPanel({
         ))}
       </div>
 
+      {tab === "editor" && (
+        activePath
+          ? <div className="tab-body" style={{ fontFamily: "var(--mono)", whiteSpace: "pre", overflow: "auto" }}><div className="hint" style={{ marginBottom: 6 }}>{activePath}</div>{content}</div>
+          : <div className="tab-body"><span className="hint">Open a file from the Code tab.</span></div>
+      )}
       {tab === "terminal" && <div className="tab-body terminal">{terminal || "$ terminal output will appear here"}</div>}
       {tab === "output" && <div className="tab-body terminal">{output || "Engine output…"}</div>}
       {tab === "git" && (root ? <GitPanel root={root} refreshKey={gitRefreshKey} /> : <div className="tab-body"><span className="hint">Open a project to use source control.</span></div>)}

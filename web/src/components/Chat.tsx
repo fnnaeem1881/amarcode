@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { SafeProviderConfig } from "@amarcode/shared";
+import type { SafeProviderConfig, ChatSession } from "@amarcode/shared";
 import { AgentSocket } from "../ws.js";
 import { api } from "../api.js";
 import { DiffView } from "./DiffView.js";
@@ -12,16 +12,23 @@ type Item =
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
 
 export function Chat({
-  root, sessionId, socket, providers, onDiffApplied, onTerminal, onGit,
+  root, session, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
+  onDiffApplied, onTerminal, onGit,
 }: {
   root: string;
-  sessionId: string | null;
+  session: ChatSession | null;
   socket: AgentSocket;
   providers: SafeProviderConfig[];
+  projectName: string;
+  git: { isRepo: boolean; branch: string; add: number; del: number; files: number };
+  onCommit: () => void;
+  onOpenPanel: () => void;
+  onOpenProject: () => void;
   onDiffApplied: (path: string) => void;
   onTerminal: (chunk: string) => void;
   onGit: (text: string) => void;
 }) {
+  const sessionId = session?.id ?? null;
   const [items, setItems] = useState<Item[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,11 +36,22 @@ export function Chat({
   const [modelSel, setModelSel] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
   const [activeLabel, setActiveLabel] = useState<string>("default");
+  const [menuOpen, setMenuOpen] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
   }, [items]);
+
+  // Hydrate the transcript when switching sessions.
+  useEffect(() => {
+    if (!sessionId) { setItems([]); return; }
+    api.messages(sessionId).then((msgs) => {
+      setItems(msgs
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ kind: m.role as "user" | "assistant", text: m.content })));
+    }).catch(() => setItems([]));
+  }, [sessionId]);
 
   const enabledProviders = providers.filter((p) => p.enabled);
 
@@ -115,48 +133,72 @@ export function Chat({
     setItems((xs) => xs.map((i) => (i.kind === "approval" && i.id === id ? { ...i, resolved: approved ? "yes" : "no" } : i)));
   };
 
+  const insertSlash = (cmd: string) => { setInput((v) => (v ? v + " " : "") + cmd); setMenuOpen(false); };
+
   return (
-    <div className="pane chat">
-      <div className="chat-header">
-        <b style={{ color: "var(--green)" }}>AI Assistant</b>
-        <span className="hint" style={{ marginLeft: "auto" }}>{activeLabel}</span>
+    <div className="cc-chat">
+      <div className="cc-log" ref={logRef}>
+        <div className="cc-col">
+          {items.length === 0 && (
+            <div className="cc-empty">
+              <div className="cc-empty-title">What should we build?</div>
+              <div className="hint">Try: “Add JWT authentication” · “Fix the login bug” · “Convert to Docker” · “Refactor UserService”</div>
+            </div>
+          )}
+          {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
+        </div>
       </div>
 
-      <div className="chat-log" ref={logRef}>
-        {items.length === 0 && (
-          <div className="hint" style={{ padding: 8 }}>
-            Try: “Add JWT authentication”, “Fix the login bug”, “Convert project to Docker”, “Refactor UserService”.
+      <div className="cc-composer-wrap">
+        <div className="cc-composer">
+          <textarea
+            value={input}
+            placeholder="Type / for commands, or ask the assistant to build, fix, or refactor…"
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          />
+
+          <div className="cc-composer-bar">
+            <div className="cc-plus">
+              <button className="cc-icon" title="Add" onClick={() => setMenuOpen((v) => !v)}>＋</button>
+              {menuOpen && (
+                <div className="cc-menu" onMouseLeave={() => setMenuOpen(false)}>
+                  <button onClick={() => { onOpenProject(); setMenuOpen(false); }}>📁 Add folder</button>
+                  <button onClick={() => { onOpenPanel(); setMenuOpen(false); }}>🗂 Open panel (files/terminal/git)</button>
+                  <button onClick={() => insertSlash("/plan ")}>⌗ Slash: /plan</button>
+                  <button onClick={() => insertSlash("/test")}>⌗ Slash: /test</button>
+                  <button onClick={() => insertSlash("/commit")}>⌗ Slash: /commit</button>
+                </div>
+              )}
+            </div>
+
+            <select className="model-pick" value={providerSel}
+              onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }} title="Provider">
+              <option value="">provider…</option>
+              {enabledProviders.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </select>
+            <select className="model-pick" value={modelSel}
+              onChange={(e) => setModelSel(e.target.value)} title="Model" disabled={!providerSel}>
+              <option value="">{models.length ? "model…" : "load models"}</option>
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+
+            <div style={{ flex: 1 }} />
+
+            <span className="cc-branch" title="Project · branch">
+              {projectName || "—"} {git.isRepo && <b>{git.branch}</b>}
+            </span>
+            {git.isRepo && (git.add > 0 || git.del > 0) && (
+              <span className="cc-diffstat"><span className="add">+{git.add}</span> <span className="del">−{git.del}</span></span>
+            )}
+            <button className="cc-commit" onClick={onCommit} disabled={!git.isRepo || !git.files} title="Commit changes">
+              Commit changes
+            </button>
+
+            {busy
+              ? <button className="btn ghost" onClick={() => { socket.cancel(); setBusy(false); }}>■ Stop</button>
+              : <button className="cc-send" onClick={send} disabled={!root || !input.trim()}>↑</button>}
           </div>
-        )}
-        {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
-      </div>
-
-      <div className="composer">
-        <textarea
-          value={input}
-          placeholder="Ask the assistant to build, fix, or refactor…  (Enter to send, Shift+Enter for newline)"
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
-          }}
-        />
-        <div className="composer-bar">
-          <select className="model-pick" value={providerSel}
-            onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }}
-            title="Provider">
-            <option value="">provider…</option>
-            {enabledProviders.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </select>
-          <select className="model-pick" value={modelSel}
-            onChange={(e) => setModelSel(e.target.value)} title="Model" disabled={!providerSel}>
-            <option value="">{models.length ? "model…" : "load models"}</option>
-            {models.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-          {providerSel && !models.length && <button className="btn ghost sm" onClick={() => loadModels(providerSel)}>↻</button>}
-          <div style={{ flex: 1 }} />
-          {busy
-            ? <button className="btn ghost" onClick={() => { socket.cancel(); setBusy(false); }}>■ Stop</button>
-            : <button className="btn send-btn" onClick={send} disabled={!root || !input.trim()}>Send ↵</button>}
         </div>
       </div>
     </div>

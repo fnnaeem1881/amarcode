@@ -23,6 +23,80 @@ input, select, textarea { font-family: inherit; }
 
 .app { display: grid; grid-template-rows: 34px 1fr; height: 100vh; }
 
+/* ===== Claude Code desktop layout ===== */
+.cc-app { display: grid; grid-template-columns: 250px 1fr; height: 100vh; }
+
+/* left sidebar */
+.sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.sb-brand { padding: 12px 14px 8px; }
+.sb-brand .brand { color: var(--green); font-weight: 600; font-size: 15px; }
+.sb-tabs { display: flex; gap: 6px; padding: 0 12px 8px; }
+.sb-tabs button { flex: 1; background: var(--bg-panel); color: var(--text-dim); border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; font-size: 12px; }
+.sb-tabs button.active { color: var(--text); background: var(--bg); border-color: var(--accent); }
+.sb-new { margin: 0 12px 8px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px; text-align: left; font-size: 13px; }
+.sb-new:hover { border-color: var(--accent); }
+.sb-project { margin: 0 12px 10px; background: transparent; color: var(--text-dim); border: 1px dashed var(--border); border-radius: 8px; padding: 6px 8px; text-align: left; font-size: 12px; display: flex; gap: 6px; align-items: center; overflow: hidden; }
+.sb-project span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-project:hover { color: var(--text); border-color: var(--accent); }
+.sb-scroll { flex: 1; overflow: auto; }
+.sb-section { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); padding: 10px 14px 4px; }
+.sb-session { display: flex; align-items: center; gap: 7px; padding: 7px 14px; cursor: pointer; font-size: 13px; overflow: hidden; }
+.sb-session:hover { background: var(--bg-panel); }
+.sb-session.active { background: var(--bg-panel); }
+.sb-session .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.sb-session .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-session.active .title { color: var(--text); font-weight: 500; }
+.sb-file { padding: 4px 14px; cursor: pointer; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-file:hover { background: var(--bg-panel); }
+.sb-file.active { background: #094771; }
+.sb-meta { padding: 6px 12px; }
+.sb-settings { border-top: 1px solid var(--border); background: transparent; color: var(--text-dim); border: none; border-top: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 13px; }
+.sb-settings:hover { color: var(--text); background: var(--bg-panel); }
+
+/* main */
+.cc-main { display: flex; flex-direction: column; overflow: hidden; }
+.cc-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.cc-title { font-weight: 600; font-size: 14px; }
+.cc-badge { font-size: 11px; color: var(--green); border: 1px solid var(--green); border-radius: 4px; padding: 1px 7px; }
+.cc-icon { background: transparent; color: var(--text-dim); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; }
+.cc-icon:hover { color: var(--text); background: var(--bg-panel); }
+.cc-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.cc-connecting { padding: 40px; text-align: center; }
+
+/* chat */
+.cc-chat { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.cc-log { flex: 1; overflow: auto; padding: 24px 0 8px; }
+.cc-col { max-width: 780px; margin: 0 auto; padding: 0 28px; }
+.cc-empty { text-align: center; padding: 60px 0; }
+.cc-empty-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+
+/* composer */
+.cc-composer-wrap { padding: 10px 0 16px; }
+.cc-composer { max-width: 780px; margin: 0 auto; width: calc(100% - 56px); border: 1px solid var(--border); border-radius: 16px; background: var(--bg-alt); box-shadow: 0 2px 16px rgba(0,0,0,.25); }
+.cc-composer:focus-within { border-color: var(--accent); }
+.cc-composer textarea { width: 100%; background: transparent; color: var(--text); border: none; padding: 14px 16px 6px; resize: none; min-height: 46px; max-height: 240px; font-size: 14px; outline: none; }
+.cc-composer-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px 10px; }
+.cc-plus { position: relative; }
+.cc-menu { position: absolute; bottom: 40px; left: 0; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 10px; padding: 6px; min-width: 230px; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 20; display: flex; flex-direction: column; gap: 2px; }
+.cc-menu button { text-align: left; background: transparent; color: var(--text); border: none; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
+.cc-menu button:hover { background: var(--bg-panel); }
+.cc-branch { font-size: 12px; color: var(--text-dim); }
+.cc-branch b { color: var(--text); font-weight: 500; }
+.cc-diffstat { font-family: var(--mono); font-size: 11px; }
+.cc-diffstat .add { color: var(--green); }
+.cc-diffstat .del { color: var(--red); }
+.cc-commit { background: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; }
+.cc-commit:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+.cc-commit:disabled { opacity: .4; }
+.cc-send { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: 16px; }
+.cc-send:hover:not(:disabled) { background: var(--accent-hover); }
+.cc-send:disabled { opacity: .4; }
+
+/* drawer */
+.cc-drawer { height: 260px; border-top: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg-panel); }
+.cc-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); }
+.cc-drawer .bottom { flex: 1; border-top: none; }
+
 /* top bar */
 .topbar {
   display: flex; align-items: center; gap: 12px; padding: 0 12px;
