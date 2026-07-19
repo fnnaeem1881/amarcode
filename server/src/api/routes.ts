@@ -15,6 +15,7 @@ import * as sessions from "../agent/sessions.js";
 import { costSummary } from "../agent/cost.js";
 import { getMemory, saveMemory, ensureMemory } from "../agent/memory.js";
 import { toolRegistry } from "../tools/registry.js";
+import * as gitSvc from "./gitService.js";
 
 export const api = Router();
 
@@ -161,9 +162,62 @@ api.post("/memory", (req, res) => {
   res.json({ ok: true });
 });
 
+/* ----------------------------------- Git --------------------------------- */
+
+const root = (req: any) => String(req.query.root ?? req.body?.root ?? "");
+
+api.get("/git/status", async (req, res) => {
+  try { res.json(await gitSvc.status(root(req))); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.get("/git/diff", async (req, res) => {
+  try { res.json({ diff: await gitSvc.diff(root(req), req.query.path ? String(req.query.path) : undefined, req.query.staged === "true") }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.get("/git/branches", async (req, res) => {
+  try { res.json(await gitSvc.branches(root(req))); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.get("/git/log", async (req, res) => {
+  try { res.json(await gitSvc.log(root(req))); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.post("/git/init", async (req, res) => {
+  try { await gitSvc.initRepo(root(req)); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.post("/git/stage", async (req, res) => {
+  try { req.body.all ? await gitSvc.stageAll(root(req)) : await gitSvc.stage(root(req), req.body.path); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.post("/git/unstage", async (req, res) => {
+  try { await gitSvc.unstage(root(req), req.body.path); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.post("/git/commit", async (req, res) => {
+  try { res.json(await gitSvc.commit(root(req), req.body.message, req.body.addAll !== false)); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.post("/git/checkout", async (req, res) => {
+  try { await gitSvc.checkout(root(req), req.body.ref); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+api.post("/git/branch", async (req, res) => {
+  try { await gitSvc.createBranch(root(req), req.body.name); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+// Destructive — requires explicit confirm flag from the UI.
+api.post("/git/discard", async (req, res) => {
+  if (!req.body.confirm) return res.status(400).json({ error: "confirmation required for discard" });
+  try { await gitSvc.discard(root(req), req.body.path); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: msg(e) }); }
+});
+
 /* ---------------------------------- Cost --------------------------------- */
 
 api.get("/cost", (_req, res) => res.json(costSummary()));
+
+function msg(e: unknown): string { return e instanceof Error ? e.message : String(e); }
 
 /* -------------------------------- Browse --------------------------------- */
 

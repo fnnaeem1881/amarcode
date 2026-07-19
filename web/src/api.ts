@@ -3,6 +3,16 @@ import type {
   ChatSession, StoredMessage, Plan, ModelRouting, ToolDescriptor,
 } from "@amarcode/shared";
 
+export interface GitStatusFile { path: string; index: string; working: string; staged: boolean }
+export interface GitStatus {
+  isRepo: boolean;
+  branch: string | null;
+  ahead: number;
+  behind: number;
+  files: GitStatusFile[];
+  tracking: string | null;
+}
+
 /** Thin typed client over the engine's REST API. */
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -39,6 +49,19 @@ export const api = {
   sessions: (root: string) => j<ChatSession[]>(`/api/sessions?root=${encodeURIComponent(root)}`),
   createSession: (root: string, title?: string) => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title }) }),
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
+
+  // git
+  gitStatus: (root: string) => j<GitStatus>(`/api/git/status?root=${encodeURIComponent(root)}`),
+  gitDiff: (root: string, path?: string, staged?: boolean) => j<{ diff: string }>(`/api/git/diff?root=${encodeURIComponent(root)}${path ? `&path=${encodeURIComponent(path)}` : ""}${staged ? "&staged=true" : ""}`),
+  gitBranches: (root: string) => j<{ current: string; all: string[] }>(`/api/git/branches?root=${encodeURIComponent(root)}`),
+  gitLog: (root: string) => j<{ hash: string; message: string; author: string; date: string }[]>(`/api/git/log?root=${encodeURIComponent(root)}`),
+  gitInit: (root: string) => j("/api/git/init", { method: "POST", body: JSON.stringify({ root }) }),
+  gitStage: (root: string, path?: string, all?: boolean) => j("/api/git/stage", { method: "POST", body: JSON.stringify({ root, path, all }) }),
+  gitUnstage: (root: string, path: string) => j("/api/git/unstage", { method: "POST", body: JSON.stringify({ root, path }) }),
+  gitCommit: (root: string, message: string) => j<{ commit: string; changes: number }>("/api/git/commit", { method: "POST", body: JSON.stringify({ root, message }) }),
+  gitCheckout: (root: string, ref: string) => j("/api/git/checkout", { method: "POST", body: JSON.stringify({ root, ref }) }),
+  gitBranch: (root: string, name: string) => j("/api/git/branch", { method: "POST", body: JSON.stringify({ root, name }) }),
+  gitDiscard: (root: string, path: string) => j("/api/git/discard", { method: "POST", body: JSON.stringify({ root, path, confirm: true }) }),
 
   // planner + tools + cost + memory
   plan: (sessionId: string, root: string, task: string) => j<Plan>("/api/plan", { method: "POST", body: JSON.stringify({ sessionId, root, task }) }),

@@ -1,17 +1,19 @@
 import { useState } from "react";
 import type { Plan } from "@amarcode/shared";
+import { GitPanel } from "./GitPanel.js";
 
 type Tab = "terminal" | "problems" | "git" | "output" | "memory" | "plan";
 
 export function BottomPanel({
-  terminal, output, git, problems, memory, plan,
+  root, terminal, output, problems, memory, plan, gitRefreshKey,
 }: {
+  root: string;
   terminal: string;
   output: string;
-  git: string;
   problems: string[];
   memory: any;
   plan: Plan | null;
+  gitRefreshKey: number;
 }) {
   const [tab, setTab] = useState<Tab>("terminal");
   const tabs: Tab[] = ["terminal", "problems", "git", "output", "memory", "plan"];
@@ -28,7 +30,7 @@ export function BottomPanel({
 
       {tab === "terminal" && <div className="tab-body terminal">{terminal || "$ terminal output will appear here"}</div>}
       {tab === "output" && <div className="tab-body terminal">{output || "Engine output…"}</div>}
-      {tab === "git" && <div className="tab-body terminal">{git || "Run a git tool to see status/diff here."}</div>}
+      {tab === "git" && (root ? <GitPanel root={root} refreshKey={gitRefreshKey} /> : <div className="tab-body"><span className="hint">Open a project to use source control.</span></div>)}
       {tab === "problems" && (
         <div className="tab-body">
           {problems.length ? problems.map((p, i) => <div key={i} style={{ color: "var(--red)" }}>● {p}</div>) : <span className="hint">No problems detected.</span>}

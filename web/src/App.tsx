@@ -23,7 +23,7 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
 
   const [terminal, setTerminal] = useState("");
-  const [git, setGit] = useState("");
+  const [gitRefreshKey, setGitRefreshKey] = useState(0);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [memory, setMemory] = useState<any>(null);
   const [problems] = useState<string[]>([]);
@@ -67,6 +67,7 @@ export function App() {
   async function refreshFile(path: string) {
     if (path === activePath) { try { setContent((await api.file(root, path)).content); } catch {} }
     setFiles(await api.files(root).catch(() => files));
+    setGitRefreshKey((k) => k + 1); // agent touched a file → refresh source control
   }
 
   async function makePlan() {
@@ -99,7 +100,7 @@ export function App() {
 
         <div className="center">
           <Editor path={activePath} content={content} />
-          <BottomPanel terminal={terminal} output={status} git={git} problems={problems} memory={memory} plan={plan} />
+          <BottomPanel root={root} terminal={terminal} output={status} problems={problems} memory={memory} plan={plan} gitRefreshKey={gitRefreshKey} />
         </div>
 
         {socketRef.current ? (
@@ -110,7 +111,7 @@ export function App() {
             providers={providers}
             onDiffApplied={refreshFile}
             onTerminal={(chunk) => setTerminal((t) => (t + chunk).slice(-20000))}
-            onGit={setGit}
+            onGit={() => setGitRefreshKey((k) => k + 1)}
           />
         ) : (
           <div className="pane chat"><div className="hint" style={{ padding: 16 }}>Connecting to engine…</div></div>

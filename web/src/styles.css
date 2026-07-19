@@ -104,6 +104,29 @@ input, select, textarea { font-family: inherit; }
 .plan-step .action.modify, .plan-step .action.update { color: var(--yellow); }
 .plan-step .action.delete { color: var(--red); }
 
+/* git panel */
+.git-panel { display: grid; grid-template-columns: 300px 1fr; height: 100%; overflow: hidden; }
+.git-side { overflow: auto; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.git-diff { overflow: auto; }
+.git-branchbar { display: flex; gap: 4px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.git-branchbar select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; flex: 1; }
+.git-branchbar button { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
+.commit-box { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
+.commit-box input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
+.git-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); padding: 6px 8px 2px; }
+.git-file { display: flex; align-items: center; gap: 6px; padding: 2px 8px; cursor: pointer; font-family: var(--mono); font-size: 12px; }
+.git-file:hover { background: var(--bg-alt); }
+.git-file.active { background: #094771; }
+.git-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.git-badge { width: 15px; text-align: center; font-weight: 700; font-size: 11px; }
+.git-badge.s-M { color: var(--yellow); }
+.git-badge.s-U { color: var(--green); }
+.git-badge.s-A { color: var(--green); }
+.git-badge.s-D { color: var(--red); }
+.git-actions { display: none; gap: 2px; }
+.git-file:hover .git-actions { display: flex; }
+.git-actions button { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 3px; padding: 0 5px; font-size: 12px; line-height: 16px; }
+
 /* settings modal */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .modal { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 8px; width: 720px; max-width: 92vw; max-height: 86vh; overflow: auto; }

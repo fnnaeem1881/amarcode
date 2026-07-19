@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SafeProviderConfig } from "@amarcode/shared";
 import { AgentSocket } from "../ws.js";
 import { api } from "../api.js";
+import { DiffView } from "./DiffView.js";
 
 type Item =
   | { kind: "user"; text: string }
@@ -157,19 +158,6 @@ function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok:
       </div>
     );
   return null;
-}
-
-function DiffView({ unified }: { unified: string }) {
-  return (
-    <div className="diff">
-      {unified.split("\n").map((line, i) => {
-        const cls = line.startsWith("+") && !line.startsWith("+++") ? "add"
-          : line.startsWith("-") && !line.startsWith("---") ? "del"
-          : line.startsWith("@@") || line.startsWith("---") || line.startsWith("+++") ? "meta" : "";
-        return <div key={i} className={cls}>{line || " "}</div>;
-      })}
-    </div>
-  );
 }
 
 function shortArgs(args: any): string {
