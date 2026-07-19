@@ -16,6 +16,7 @@ import { costSummary } from "../agent/cost.js";
 import { getMemory, saveMemory, ensureMemory } from "../agent/memory.js";
 import { toolRegistry } from "../tools/registry.js";
 import * as gitSvc from "./gitService.js";
+import * as fsBrowse from "./fsBrowse.js";
 
 export const api = Router();
 
@@ -221,17 +222,24 @@ function msg(e: unknown): string { return e instanceof Error ? e.message : Strin
 
 /* -------------------------------- Browse --------------------------------- */
 
-// Lightweight directory browser so the UI can let users pick a project folder.
+// Directory browser for the project picker: drives/roots + robust listing.
+api.get("/fs/roots", (_req, res) => res.json({ roots: fsBrowse.roots(), home: fsBrowse.homeDir() }));
+
 api.get("/fs/list", (req, res) => {
-  const dir = String(req.query.dir ?? (process.platform === "win32" ? "C:\\" : "/"));
   try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .filter((n) => !n.startsWith("."))
-      .sort();
-    res.json({ dir, entries });
+    res.json(fsBrowse.list(req.query.dir ? String(req.query.dir) : undefined));
   } catch (e) {
-    res.status(400).json({ error: e instanceof Error ? e.message : String(e) });
+    res.status(400).json({ error: msg(e) });
+  }
+});
+
+// Validate a typed/selected path before opening it as a project.
+api.get("/fs/validate", (req, res) => {
+  const p = String(req.query.path ?? "");
+  try {
+    const st = fs.statSync(p);
+    res.json({ valid: st.isDirectory(), isDirectory: st.isDirectory(), path: p });
+  } catch {
+    res.json({ valid: false, isDirectory: false, path: p });
   }
 });

@@ -1,66 +1,120 @@
-import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { useEffect, useState, useCallback } from "react";
+import { api, type DirListing } from "../api.js";
 
-/** Modal folder browser for selecting a project directory. */
+/**
+ * Modern folder picker: drive/root rail, breadcrumbs, working Up navigation,
+ * typed-path entry with validation, and project markers highlighted. Works on
+ * any Windows drive or POSIX root.
+ */
 export function ProjectPicker({ onPick, onClose }: { onPick: (dir: string) => void; onClose: () => void }) {
-  const [dir, setDir] = useState<string>("");
-  const [entries, setEntries] = useState<string[]>([]);
-  const [error, setError] = useState<string>("");
+  const [listing, setListing] = useState<DirListing | null>(null);
+  const [roots, setRoots] = useState<{ label: string; path: string }[]>([]);
+  const [pathInput, setPathInput] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const load = async (d?: string) => {
+  const load = useCallback(async (dir?: string) => {
+    setLoading(true);
     try {
-      const r = await api.browse(d);
-      setDir(r.dir);
-      setEntries(r.entries);
+      const r = await api.browse(dir);
+      setListing(r);
+      setPathInput(r.dir);
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    api.fsRoots().then((r) => setRoots(r.roots)).catch(() => {});
+    load();
+  }, [load]);
+
+  const go = async () => {
+    const p = pathInput.trim();
+    if (!p) return;
+    const v = await api.fsValidate(p).catch(() => ({ valid: false } as any));
+    if (!v.valid) { setError(`Not a folder: ${p}`); return; }
+    load(p);
   };
 
-  useEffect(() => { load(); }, []);
-
-  const join = (name: string) => {
-    const sep = dir.includes("\\") ? "\\" : "/";
-    return dir.endsWith(sep) ? dir + name : dir + sep + name;
-  };
-  const parent = () => {
-    const sep = dir.includes("\\") ? "\\" : "/";
-    const parts = dir.replace(/[\\/]+$/, "").split(sep);
-    parts.pop();
-    load(parts.length <= 1 ? parts[0] + sep : parts.join(sep));
+  const open = async () => {
+    const dir = listing?.dir ?? pathInput.trim();
+    const v = await api.fsValidate(dir).catch(() => ({ valid: false } as any));
+    if (!v.valid) { setError(`Not a folder: ${dir}`); return; }
+    onPick(dir);
   };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Select a project folder</h2>
-        <div className="body">
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <input
-              value={dir}
-              onChange={(e) => setDir(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && load(dir)}
-              style={{ flex: 1, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, padding: "6px 8px" }}
-            />
-            <button className="btn ghost" onClick={() => load(dir)}>Go</button>
-            <button className="btn ghost" onClick={parent}>↑ Up</button>
+      <div className="modal picker" onClick={(e) => e.stopPropagation()}>
+        <h2>Open a project folder</h2>
+
+        <div className="picker-toolbar">
+          <button className="btn ghost" disabled={!listing?.parent || loading}
+            onClick={() => listing?.parent && load(listing.parent)} title="Up one level">↑ Up</button>
+          <div className="crumbs">
+            {listing?.crumbs.map((c, i) => (
+              <span key={c.path}>
+                {i > 0 && <span className="sep">›</span>}
+                <button className="crumb" onClick={() => load(c.path)}>{c.label}</button>
+              </span>
+            ))}
           </div>
-          {error && <div style={{ color: "var(--red)", marginBottom: 8 }}>{error}</div>}
-          <div style={{ border: "1px solid var(--border)", borderRadius: 6, maxHeight: 300, overflow: "auto" }}>
-            {entries.map((name) => (
-              <div key={name} className="file" style={{ padding: "5px 12px" }} onClick={() => load(join(name))}>
-                📁 {name}
+        </div>
+
+        <div className="picker-path">
+          <input
+            value={pathInput}
+            spellCheck={false}
+            placeholder="Paste or type a full path…"
+            onChange={(e) => setPathInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && go()}
+          />
+          <button className="btn ghost" onClick={go} disabled={loading}>Go</button>
+        </div>
+
+        <div className="picker-body">
+          <div className="picker-rail">
+            <div className="rail-title">This PC</div>
+            {roots.map((r) => (
+              <button key={r.path} className="rail-item" onClick={() => load(r.path)}>{r.label}</button>
+            ))}
+          </div>
+
+          <div className="picker-list">
+            {loading && <div className="hint" style={{ padding: 12 }}>Loading…</div>}
+            {!loading && listing?.entries.length === 0 && <div className="hint" style={{ padding: 12 }}>No sub-folders here. You can still open this folder.</div>}
+            {!loading && listing?.entries.map((e) => (
+              <div key={e.path} className={`picker-entry ${e.isProject ? "project" : ""}`}
+                onClick={() => setPathInput(e.path)}
+                onDoubleClick={() => (e.isProject ? onPick(e.path) : load(e.path))}
+                title={e.path}>
+                <span className="ico">{e.isProject ? "📦" : "📁"}</span>
+                <span className="nm">{e.name}</span>
+                {e.isProject && <span className="tag">open</span>}
+                <button className="into" onClick={(ev) => { ev.stopPropagation(); load(e.path); }} title="Enter folder">→</button>
               </div>
             ))}
-            {!entries.length && <div className="hint" style={{ padding: 12 }}>No subfolders.</div>}
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-            <button className="btn ghost" onClick={onClose}>Cancel</button>
-            <button className="btn" onClick={() => onPick(dir)}>Open this folder</button>
-          </div>
+        </div>
+
+        {error && <div className="picker-error">{error}</div>}
+
+        <div className="picker-footer">
+          <span className="hint">Double-click a 📦 to open it, or select any folder.</span>
+          <div style={{ flex: 1 }} />
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn" onClick={open} disabled={loading}>Open {listing ? shortName(listing.dir) : ""}</button>
         </div>
       </div>
     </div>
   );
+}
+
+function shortName(dir: string): string {
+  const parts = dir.replace(/[\\/]+$/, "").split(/[\\/]/);
+  return parts[parts.length - 1] || dir;
 }

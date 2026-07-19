@@ -3,6 +3,14 @@ import type {
   ChatSession, StoredMessage, Plan, ModelRouting, ToolDescriptor,
 } from "@amarcode/shared";
 
+export interface DirEntry { name: string; path: string; hasChildren: boolean; isProject: boolean }
+export interface DirListing {
+  dir: string;
+  parent: string | null;
+  entries: DirEntry[];
+  crumbs: { label: string; path: string }[];
+}
+
 export interface GitStatusFile { path: string; index: string; working: string; staged: boolean }
 export interface GitStatus {
   isRepo: boolean;
@@ -43,7 +51,9 @@ export const api = {
   metadata: (root: string) => j<ProjectMetadata>(`/api/project/metadata?root=${encodeURIComponent(root)}`),
 
   // fs browse
-  browse: (dir?: string) => j<{ dir: string; entries: string[] }>(`/api/fs/list${dir ? `?dir=${encodeURIComponent(dir)}` : ""}`),
+  fsRoots: () => j<{ roots: { label: string; path: string }[]; home: string }>("/api/fs/roots"),
+  browse: (dir?: string) => j<DirListing>(`/api/fs/list${dir ? `?dir=${encodeURIComponent(dir)}` : ""}`),
+  fsValidate: (path: string) => j<{ valid: boolean; isDirectory: boolean; path: string }>(`/api/fs/validate?path=${encodeURIComponent(path)}`),
 
   // sessions
   sessions: (root: string) => j<ChatSession[]>(`/api/sessions?root=${encodeURIComponent(root)}`),
