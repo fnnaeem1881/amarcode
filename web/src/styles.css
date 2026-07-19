@@ -75,6 +75,19 @@ input, select, textarea { font-family: inherit; }
 .cc-empty { text-align: center; padding: 60px 0; }
 .cc-empty-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
 
+/* working indicator (Claude-Code-style) */
+.cc-working { display: flex; align-items: center; gap: 10px; padding: 10px 4px; color: var(--text-dim); font-size: 13px; }
+.cc-working-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); animation: cc-pulse 1.1s ease-in-out infinite; }
+@keyframes cc-pulse { 0%,100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+.cc-working-text { color: var(--text); }
+.cc-working-time { font-variant-numeric: tabular-nums; }
+.cc-working-bypass { color: var(--yellow); border: 1px solid var(--yellow); border-radius: 10px; padding: 0 7px; font-size: 10px; }
+
+/* bypass toggle */
+.cc-bypass { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }
+.cc-bypass:hover { border-color: var(--accent); }
+.cc-bypass.on { color: var(--yellow); border-color: var(--yellow); background: rgba(220,220,170,.08); }
+
 /* composer */
 .cc-composer-wrap { padding: 10px 0 16px; }
 .cc-composer { max-width: 780px; margin: 0 auto; width: calc(100% - 56px); border: 1px solid var(--border); border-radius: 16px; background: var(--bg-alt); box-shadow: 0 2px 16px rgba(0,0,0,.25); }

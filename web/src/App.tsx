@@ -21,6 +21,12 @@ export function App() {
 
   const [providers, setProviders] = useState<SafeProviderConfig[]>([]);
   const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
+
+  async function clearAllSessions() {
+    await Promise.all(allSessions.map(session => api.deleteSession(session.id).catch(() => {})));
+    setAllSessions([]);
+    setSession(null);
+  }
   const [session, setSession] = useState<ChatSession | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"home" | "code">("home");
 

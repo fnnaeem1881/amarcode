@@ -33,6 +33,10 @@ export function Chat({
   const [items, setItems] = useState<Item[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState("");      // current activity label
+  const [iteration, setIteration] = useState(0);
+  const [elapsed, setElapsed] = useState(0); // seconds since send
+  const [bypass, setBypass] = useState<boolean>(() => localStorage.getItem("bypass") === "1");
   const [providerSel, setProviderSel] = useState<string>("");
   const [modelSel, setModelSel] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
@@ -43,6 +47,15 @@ export function Chat({
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
   }, [items]);
+
+  // Tick the elapsed timer while the agent is working.
+  useEffect(() => {
+    if (!busy) return;
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
+
+  useEffect(() => { localStorage.setItem("bypass", bypass ? "1" : "0"); }, [bypass]);
 
   // Hydrate the transcript when switching sessions.
   useEffect(() => {
@@ -102,13 +115,15 @@ export function Chat({
     push({ kind: "user", text: task });
     setInput("");
     setBusy(true);
+    setElapsed(0); setIteration(0); setStep("thinking…");
 
     const [providerId, model] = override.split("::");
     socket.chat(
       { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined },
       {
-        onText: appendAssistant,
-        onToolStart: (call) => push({ kind: "tool", name: call.name, args: call.arguments, status: "running" }),
+        onText: (d) => { setStep("writing…"); appendAssistant(d); },
+        onIteration: (n) => { setIteration(n); setStep("thinking…"); },
+        onToolStart: (call) => { setStep(`running ${call.name}…`); push({ kind: "tool", name: call.name, args: call.arguments, status: "running" }); },
         onToolResult: (call, result) => {
           const stat = diffStat(result.data?.unified);
           setItems((xs) => {
@@ -126,9 +141,17 @@ export function Chat({
           if (event.type === "terminal") onTerminal(event.payload);
           if (event.type === "diff") push({ kind: "diff", unified: event.payload.unified });
         },
-        onApproval: (req) => push({ kind: "approval", ...req }),
-        onError: (message) => { push({ kind: "assistant", text: `⚠️ ${message}` }); setBusy(false); },
-        onDone: () => setBusy(false),
+        onApproval: (req) => {
+          // Bypass mode auto-approves everything except dangerous operations.
+          if (bypass && req.risk !== "dangerous") {
+            socket.approve(req.id, true);
+            push({ kind: "approval", ...req, resolved: "yes" });
+          } else {
+            push({ kind: "approval", ...req });
+          }
+        },
+        onError: (message) => { push({ kind: "assistant", text: `⚠️ ${message}` }); setBusy(false); setStep(""); },
+        onDone: () => { setBusy(false); setStep(""); },
       },
     );
   };
@@ -139,6 +162,7 @@ export function Chat({
   };
 
   const insertSlash = (cmd: string) => { setInput((v) => (v ? v + " " : "") + cmd); setMenuOpen(false); };
+  const fmtTime = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
 
   return (
     <div className="cc-chat">
@@ -151,6 +175,15 @@ export function Chat({
             </div>
           )}
           {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
+
+          {busy && (
+            <div className="cc-working">
+              <span className="cc-working-dot" />
+              <span className="cc-working-text">Working{iteration ? ` · step ${iteration}` : ""} · {step || "…"}</span>
+              <span className="cc-working-time">{fmtTime(elapsed)}</span>
+              {bypass && <span className="cc-working-bypass">bypass on</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -176,6 +209,13 @@ export function Chat({
                 </div>
               )}
             </div>
+
+            <button
+              className={`cc-bypass ${bypass ? "on" : ""}`}
+              onClick={() => setBypass((v) => !v)}
+              title={bypass ? "Bypass permissions ON — edits & commands auto-approve (dangerous ops still ask)" : "Turn on bypass to auto-approve edits & commands"}>
+              {bypass ? "⚡ Bypass on" : "🛡 Ask each time"}
+            </button>
 
             <select className="model-pick" value={providerSel}
               onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }} title="Provider">
