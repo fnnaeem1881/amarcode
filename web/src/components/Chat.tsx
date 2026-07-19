@@ -7,7 +7,7 @@ import { DiffView } from "./DiffView.js";
 type Item =
   | { kind: "user"; text: string }
   | { kind: "assistant"; text: string }
-  | { kind: "tool"; name: string; args: any; status: "running" | "ok" | "fail"; output?: string }
+  | { kind: "tool"; name: string; args: any; status: "running" | "ok" | "fail"; output?: string; add?: number; del?: number }
   | { kind: "diff"; unified: string }
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
 
@@ -61,12 +61,13 @@ export function Chat({
         onText: appendAssistant,
         onToolStart: (call) => push({ kind: "tool", name: call.name, args: call.arguments, status: "running" }),
         onToolResult: (call, result) => {
+          const stat = diffStat(result.data?.unified);
           setItems((xs) => {
             const idx = [...xs].reverse().findIndex((i) => i.kind === "tool" && (i as any).status === "running" && (i as any).name === call.name);
             if (idx < 0) return xs;
             const real = xs.length - 1 - idx;
             const copy = xs.slice();
-            copy[real] = { kind: "tool", name: call.name, args: call.arguments, status: result.ok ? "ok" : "fail", output: result.output };
+            copy[real] = { kind: "tool", name: call.name, args: call.arguments, status: result.ok ? "ok" : "fail", output: result.output, add: stat?.add, del: stat?.del };
             return copy;
           });
           if (call.name.startsWith("git_")) onGit(result.output);
@@ -133,14 +134,19 @@ export function Chat({
 function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok: boolean) => void }) {
   if (item.kind === "user") return <div className="msg user"><div className="who">You</div><div className="bubble">{item.text}</div></div>;
   if (item.kind === "assistant") return <div className="msg assistant"><div className="who">Assistant</div><div className="bubble">{item.text}</div></div>;
-  if (item.kind === "tool")
+  if (item.kind === "tool") {
+    const { verb, target } = toolLabel(item.name, item.args);
     return (
-      <div className={`tool-chip ${item.status === "ok" ? "ok" : item.status === "fail" ? "fail" : ""}`}>
-        <span className="name">{item.name}</span>({shortArgs(item.args)})
-        {item.status === "running" ? " …" : item.status === "ok" ? " ✓" : " ✗"}
-        {item.output && item.status === "fail" && <div className="hint" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{item.output.slice(0, 300)}</div>}
+      <div className={`tool-line ${item.status}`}>
+        <span className="tl-dot">{item.status === "running" ? "◐" : item.status === "ok" ? "●" : "✕"}</span>
+        <span className="tl-verb">{verb}</span>
+        {target && <span className="tl-target">{target}</span>}
+        {item.add != null && item.add > 0 && <span className="tl-add">+{item.add}</span>}
+        {item.del != null && item.del > 0 && <span className="tl-del">−{item.del}</span>}
+        {item.output && item.status === "fail" && <div className="tl-err">{item.output.slice(0, 300)}</div>}
       </div>
     );
+  }
   if (item.kind === "diff") return <DiffView unified={item.unified} />;
   if (item.kind === "approval")
     return (
@@ -160,7 +166,40 @@ function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok:
   return null;
 }
 
-function shortArgs(args: any): string {
-  const s = JSON.stringify(args ?? {});
-  return s.length > 60 ? s.slice(0, 57) + "…" : s.replace(/^\{|\}$/g, "");
+/** Map a tool call to a Claude-Code-style "Verb target" label. */
+function toolLabel(name: string, args: any): { verb: string; target: string } {
+  const base = (p?: string) => (p ? String(p).split(/[\\/]/).pop() ?? String(p) : "");
+  switch (name) {
+    case "read_file": return { verb: "Read", target: base(args?.path) };
+    case "write_file": return { verb: "Wrote", target: base(args?.path) };
+    case "create_file": return { verb: "Created", target: base(args?.path) };
+    case "edit_file": return { verb: "Edited", target: base(args?.path) };
+    case "delete_file": return { verb: "Deleted", target: base(args?.path) };
+    case "rename_file": return { verb: "Renamed", target: `${base(args?.from)} → ${base(args?.to)}` };
+    case "move_file": return { verb: "Moved", target: `${base(args?.from)} → ${base(args?.to)}` };
+    case "list_directory": return { verb: "Listed", target: args?.path ?? "." };
+    case "search_text": return { verb: "Searched", target: `“${args?.query ?? ""}”` };
+    case "search_symbol": return { verb: "Found symbol", target: args?.symbol ?? "" };
+    case "semantic_search": return { verb: "Searched", target: `“${args?.query ?? ""}”` };
+    case "run_terminal": return { verb: "Ran", target: args?.command ?? "" };
+    case "run_tests": return { verb: "Ran tests", target: args?.command ?? "" };
+    case "run_build": return { verb: "Built", target: args?.command ?? "" };
+    case "git_status": return { verb: "Git status", target: "" };
+    case "git_diff": return { verb: "Git diff", target: args?.path ?? "" };
+    case "git_commit": return { verb: "Committed", target: `“${args?.message ?? ""}”` };
+    case "git_branch": return { verb: "Branch", target: args?.name ?? "" };
+    case "git_checkout": return { verb: "Checked out", target: args?.ref ?? "" };
+    default: return { verb: name, target: base(args?.path) };
+  }
+}
+
+/** Count added/removed lines from a unified diff. */
+function diffStat(unified?: string): { add: number; del: number } | undefined {
+  if (!unified || typeof unified !== "string") return undefined;
+  let add = 0, del = 0;
+  for (const line of unified.split("\n")) {
+    if (line.startsWith("+") && !line.startsWith("+++")) add++;
+    else if (line.startsWith("-") && !line.startsWith("---")) del++;
+  }
+  return { add, del };
 }

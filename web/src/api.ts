@@ -41,6 +41,13 @@ export const api = {
   listModels: (id: string) => j<ModelInfo[]>(`/api/providers/${id}/models`),
   getRouting: () => j<ModelRouting>("/api/routing"),
   saveRouting: (r: ModelRouting) => j("/api/routing", { method: "POST", body: JSON.stringify(r) }),
+  // Set one provider+model as the active default for all core stages.
+  useModel: async (providerId: string, model: string) => {
+    const ref = { providerId, model };
+    await j("/api/routing", { method: "POST", body: JSON.stringify({ planning: ref, coding: ref, refactoring: ref, fallback: [ref] }) });
+    await j("/api/settings/defaultModel", { method: "POST", body: JSON.stringify({ value: model }) });
+  },
+  getSetting: (key: string) => j<{ value: any }>(`/api/settings/${key}`),
 
   // project
   scan: (root: string) => j<ProjectMetadata>("/api/project/scan", { method: "POST", body: JSON.stringify({ root }) }),
