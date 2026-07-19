@@ -25,8 +25,10 @@ export function Chat({
   const [items, setItems] = useState<Item[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [override, setOverride] = useState<string>(""); // "providerId::model"
+  const [providerSel, setProviderSel] = useState<string>("");
+  const [modelSel, setModelSel] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
+  const [activeLabel, setActiveLabel] = useState<string>("default");
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,9 +37,33 @@ export function Chat({
 
   const enabledProviders = providers.filter((p) => p.enabled);
 
-  const loadModels = async (providerId: string) => {
-    try { setModels((await api.listModels(providerId)).map((m) => m.id)); } catch { setModels([]); }
+  // Initialise the selector from the configured active (routing) model.
+  useEffect(() => {
+    api.getRouting().then((r) => {
+      const active = r.coding;
+      if (active) {
+        setProviderSel(active.providerId);
+        setModelSel(active.model);
+        setActiveLabel(active.model);
+        loadModels(active.providerId, active.model);
+      } else if (enabledProviders[0]) {
+        setProviderSel(enabledProviders[0].id);
+        loadModels(enabledProviders[0].id);
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers.length]);
+
+  const loadModels = async (providerId: string, keep?: string) => {
+    try {
+      const ms = (await api.listModels(providerId)).map((m) => m.id);
+      setModels(ms);
+      if (keep && !ms.includes(keep)) setModels([keep, ...ms]);
+    } catch { setModels(keep ? [keep] : []); }
   };
+
+  // The model override sent with each chat (empty → server default routing).
+  const override = providerSel && modelSel ? `${providerSel}::${modelSel}` : "";
 
   const push = (item: Item) => setItems((xs) => [...xs, item]);
   const appendAssistant = (delta: string) =>
@@ -93,16 +119,7 @@ export function Chat({
     <div className="pane chat">
       <div className="chat-header">
         <b style={{ color: "var(--green)" }}>AI Assistant</b>
-        <select
-          value={override}
-          onChange={(e) => { setOverride(e.target.value); const pid = e.target.value.split("::")[0]; if (pid) loadModels(pid); }}
-          style={{ marginLeft: "auto", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 6px", maxWidth: 150 }}
-          title="Per-chat model override"
-        >
-          <option value="">Default routing</option>
-          {enabledProviders.map((p) => <option key={p.id} value={`${p.id}::`}>{p.label}</option>)}
-          {models.map((m) => <option key={m} value={`${override.split("::")[0]}::${m}`}>{m}</option>)}
-        </select>
+        <span className="hint" style={{ marginLeft: "auto" }}>{activeLabel}</span>
       </div>
 
       <div className="chat-log" ref={logRef}>
@@ -114,17 +131,32 @@ export function Chat({
         {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
       </div>
 
-      <div className="chat-input">
+      <div className="composer">
         <textarea
           value={input}
-          placeholder="Ask the assistant to build, fix, or refactor…"
+          placeholder="Ask the assistant to build, fix, or refactor…  (Enter to send, Shift+Enter for newline)"
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+          }}
         />
-        <div className="actions">
-          <button className="btn" onClick={send} disabled={busy || !root}>{busy ? "Working…" : "Send"}</button>
-          {busy && <button className="btn ghost" onClick={() => { socket.cancel(); setBusy(false); }}>Stop</button>}
-          <span className="hint" style={{ marginLeft: "auto", alignSelf: "center" }}>⌘/Ctrl + Enter</span>
+        <div className="composer-bar">
+          <select className="model-pick" value={providerSel}
+            onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }}
+            title="Provider">
+            <option value="">provider…</option>
+            {enabledProviders.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+          <select className="model-pick" value={modelSel}
+            onChange={(e) => setModelSel(e.target.value)} title="Model" disabled={!providerSel}>
+            <option value="">{models.length ? "model…" : "load models"}</option>
+            {models.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          {providerSel && !models.length && <button className="btn ghost sm" onClick={() => loadModels(providerSel)}>↻</button>}
+          <div style={{ flex: 1 }} />
+          {busy
+            ? <button className="btn ghost" onClick={() => { socket.cancel(); setBusy(false); }}>■ Stop</button>
+            : <button className="btn send-btn" onClick={send} disabled={!root || !input.trim()}>Send ↵</button>}
         </div>
       </div>
     </div>

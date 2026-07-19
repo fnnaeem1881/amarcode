@@ -30,10 +30,10 @@ export async function run_build(ctx: ToolContext, args: { command?: string }): P
 
 function execCapture(ctx: ToolContext, command: string, cwd?: string, timeoutMs = 120_000): Promise<ToolResult> {
   return new Promise((resolve) => {
-    const isWin = process.platform === "win32";
-    const shell = isWin ? "powershell.exe" : "/bin/sh";
-    const shellArgs = isWin ? ["-NoProfile", "-Command", command] : ["-c", command];
-    const child = spawn(shell, shellArgs, { cwd: cwd ? cwd : ctx.root });
+    // shell:true lets Node pick the platform shell — cmd.exe on Windows (which
+    // supports `&&` and `cd`, unlike Windows PowerShell 5.1) and /bin/sh on
+    // POSIX — and resolves the shell path itself (avoids ENOENT).
+    const child = spawn(command, { cwd: cwd ? cwd : ctx.root, shell: true });
 
     let out = "";
     let killed = false;

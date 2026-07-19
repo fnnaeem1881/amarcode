@@ -99,6 +99,16 @@ input, select, textarea { font-family: inherit; }
 .chat-input { border-top: 1px solid var(--border); padding: 8px; }
 .chat-input textarea { width: 100%; background: var(--bg-alt); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; resize: vertical; min-height: 54px; }
 .chat-input .actions { display: flex; gap: 8px; margin-top: 6px; }
+
+/* composer (Claude-Code-style input) */
+.composer { margin: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-alt); overflow: hidden; }
+.composer:focus-within { border-color: var(--accent); }
+.composer textarea { width: 100%; background: transparent; color: var(--text); border: none; padding: 12px 12px 4px; resize: none; min-height: 48px; max-height: 200px; font-size: 13px; outline: none; }
+.composer-bar { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px; }
+.model-pick { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; font-size: 11px; max-width: 150px; }
+.model-pick:hover { border-color: var(--accent); }
+.send-btn { border-radius: 16px; padding: 6px 16px; }
+.btn.ghost.sm { padding: 4px 8px; border-radius: 14px; }
 .btn { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 6px 14px; }
 .btn:hover { background: var(--accent-hover); }
 .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
@@ -169,6 +179,9 @@ input, select, textarea { font-family: inherit; }
 .modal.settings { width: 640px; }
 .active-banner { background: linear-gradient(90deg, rgba(78,201,176,.12), transparent); border: 1px solid var(--green); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
 .active-model { font-size: 15px; font-weight: 600; color: var(--green); margin-top: 2px; }
+.max-tokens-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.max-tokens-row label { color: var(--text-dim); }
+.max-tokens-row input { width: 90px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
 .add-provider { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
 .add-provider label { color: var(--text-dim); }
 .add-provider select { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }

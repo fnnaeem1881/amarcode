@@ -48,6 +48,7 @@ export const api = {
     await j("/api/settings/defaultModel", { method: "POST", body: JSON.stringify({ value: model }) });
   },
   getSetting: (key: string) => j<{ value: any }>(`/api/settings/${key}`),
+  setSetting: (key: string, value: any) => j(`/api/settings/${key}`, { method: "POST", body: JSON.stringify({ value }) }),
 
   // project
   scan: (root: string) => j<ProjectMetadata>("/api/project/scan", { method: "POST", body: JSON.stringify({ root }) }),

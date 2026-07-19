@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import type { ChatMessageInput, ModelRef, Plan, PlanStep } from "@amarcode/shared";
 import { router } from "../providers/router.js";
 import { contextManager } from "../context/contextManager.js";
+import { configStore } from "../providers/configStore.js";
 import { db } from "../core/db.js";
 
 /**
@@ -33,7 +34,8 @@ export async function createPlan(
     },
   ];
 
-  const result = await router.chat("planning", messages, { jsonMode: true, temperature: 0.2, maxOutputTokens: 1500 }, override, signal);
+  const planTokens = Math.min(1500, configStore.getSetting<number>("maxOutputTokens", 1024));
+  const result = await router.chat("planning", messages, { jsonMode: true, temperature: 0.2, maxOutputTokens: planTokens }, override, signal);
   const parsed = safeParsePlan(result.text);
 
   const plan: Plan = {

@@ -26,10 +26,12 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [tests, setTests] = useState<Record<string, TestState>>({});
   const [routing, setRouting] = useState<ModelRouting>({});
   const [newKind, setNewKind] = useState<ProviderKind>("openrouter");
+  const [maxTokens, setMaxTokens] = useState<number>(1024);
 
   const refresh = async () => {
     setProviders(await api.listProviders());
     setRouting(await api.getRouting());
+    setMaxTokens((await api.getSetting("maxOutputTokens").catch(() => ({ value: 1024 }))).value ?? 1024);
   };
   useEffect(() => { refresh(); }, []);
 
@@ -53,6 +55,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
               <div className="hint">Active model (used by the assistant)</div>
               <div className="active-model">{activeLabel}</div>
             </div>
+          </div>
+
+          <div className="max-tokens-row">
+            <label>Max output tokens per request</label>
+            <input type="number" min={128} max={32000} step={64} value={maxTokens}
+              onChange={(e) => setMaxTokens(Number(e.target.value))}
+              onBlur={() => api.setSetting("maxOutputTokens", maxTokens)} />
+            <span className="hint">Lower this if you hit a “requires more credits / fewer max_tokens” error.</span>
           </div>
 
           <div className="add-provider">

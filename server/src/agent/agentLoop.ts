@@ -6,6 +6,7 @@ import { toolRegistry } from "../tools/registry.js";
 import { ToolContext } from "../tools/context.js";
 import { contextManager } from "../context/contextManager.js";
 import { recordCost } from "./cost.js";
+import { configStore } from "../providers/configStore.js";
 
 /** Events the agent loop streams out (wired to the UI over WebSocket). */
 export type AgentEvent =
@@ -41,6 +42,8 @@ export interface AgentRunOptions {
 export async function runAgent(opts: AgentRunOptions): Promise<string> {
   const { root, task, emit } = opts;
   const maxIterations = opts.maxIterations ?? 12;
+  // Configurable output cap (keeps requests within limited/free provider budgets).
+  const maxOut = configStore.getSetting<number>("maxOutputTokens", 1024);
 
   const ctx = await contextManager.build({
     root, task, maxTokens: opts.maxTokens ?? 16000, maxFiles: opts.maxTokens ? 8 : 5, recentMessages: [],
@@ -76,7 +79,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
 
     for await (const ev of router.streamChat(
       "coding", messages,
-      { tools: toolRegistry.schemas(), stream: true, temperature: 0.2, maxOutputTokens: 4000, parallelToolCalls: true },
+      { tools: toolRegistry.schemas(), stream: true, temperature: 0.2, maxOutputTokens: maxOut, parallelToolCalls: true },
       opts.override, opts.signal,
     )) {
       if (ev.type === "text") { text += ev.delta; emit({ type: "text", delta: ev.delta }); }
