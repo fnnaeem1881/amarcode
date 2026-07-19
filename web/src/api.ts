@@ -67,6 +67,7 @@ export const api = {
   sessions: (root: string) => j<ChatSession[]>(`/api/sessions?root=${encodeURIComponent(root)}`),
   createSession: (root: string, title?: string) => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title }) }),
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
+  renameSession: (id: string, title: string) => j(`/api/sessions/${id}/title`, { method: "POST", body: JSON.stringify({ title }) }),
 
   // git
   gitStatus: (root: string) => j<GitStatus>(`/api/git/status?root=${encodeURIComponent(root)}`),

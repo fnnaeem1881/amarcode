@@ -149,6 +149,12 @@ export function App() {
               onCommit={commit}
               onOpenPanel={() => setShowDrawer(true)}
               onOpenProject={() => setShowPicker(true)}
+              onTitle={(title) => {
+                if (!session) return;
+                setSessions((xs) => xs.map((s) => (s.id === session.id ? { ...s, title } : s)));
+                setSession((s) => (s ? { ...s, title } : s));
+                api.renameSession(session.id, title).catch(() => {});
+              }}
               onDiffApplied={refreshFile}
               onTerminal={(chunk) => { setTerminal((t) => (t + chunk).slice(-20000)); setShowDrawer(true); }}
               onGit={() => setGitRefreshKey((k) => k + 1)}

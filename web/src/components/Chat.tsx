@@ -13,7 +13,7 @@ type Item =
 
 export function Chat({
   root, session, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
-  onDiffApplied, onTerminal, onGit,
+  onTitle, onDiffApplied, onTerminal, onGit,
 }: {
   root: string;
   session: ChatSession | null;
@@ -24,6 +24,7 @@ export function Chat({
   onCommit: () => void;
   onOpenPanel: () => void;
   onOpenProject: () => void;
+  onTitle: (title: string) => void;
   onDiffApplied: (path: string) => void;
   onTerminal: (chunk: string) => void;
   onGit: (text: string) => void;
@@ -94,6 +95,10 @@ export function Chat({
   const send = () => {
     const task = input.trim();
     if (!task || busy) return;
+    // Title the session from its first user message (like Claude Code).
+    if (!items.some((i) => i.kind === "user")) {
+      onTitle(task.length > 48 ? task.slice(0, 48) + "…" : task);
+    }
     push({ kind: "user", text: task });
     setInput("");
     setBusy(true);

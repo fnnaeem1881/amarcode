@@ -138,6 +138,10 @@ api.post("/sessions/:id/model", (req, res) => {
   sessions.setSessionModel(req.params.id, req.body.providerId, req.body.model);
   res.json({ ok: true });
 });
+api.post("/sessions/:id/title", (req, res) => {
+  sessions.renameSession(req.params.id, String(req.body.title ?? "").slice(0, 80));
+  res.json({ ok: true });
+});
 
 /* -------------------------------- Planner -------------------------------- */
 
