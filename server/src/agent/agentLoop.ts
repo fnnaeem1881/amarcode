@@ -42,9 +42,10 @@ export interface AgentRunOptions {
  */
 export async function runAgent(opts: AgentRunOptions): Promise<string> {
   const { root, task, emit } = opts;
-  const maxIterations = opts.maxIterations ?? 12;
-  // Configurable output cap (keeps requests within limited/free provider budgets).
-  const maxOut = configStore.getSetting<number>("maxOutputTokens", 1024);
+  const maxIterations = opts.maxIterations ?? 25; // enough for multi-file tasks + verification
+  // Configurable output cap. Must be large enough to write file contents, which
+  // count as output tokens — a low cap truncates files. Default 4096.
+  const maxOut = configStore.getSetting<number>("maxOutputTokens", 4096);
 
   const ctx = await contextManager.build({
     root, task, maxTokens: opts.maxTokens ?? 16000, maxFiles: opts.maxTokens ? 8 : 5, recentMessages: [],

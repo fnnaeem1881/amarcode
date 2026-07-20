@@ -113,18 +113,31 @@ export class ContextManager {
   }
 
   private projectSummary(meta: ProjectMetadata | undefined, root: string): string {
-    if (!meta) return `You are working in the project at ${root}.`;
-    return [
-      `You are an expert software engineer working in the "${meta.name}" project.`,
-      `Framework: ${meta.framework}. Language: ${meta.language}.`,
-      meta.packageManager ? `Package manager: ${meta.packageManager}.` : "",
-      meta.database ? `Database: ${meta.database}.` : "",
-      meta.testFramework ? `Tests: ${meta.testFramework}.` : "",
-      meta.usesDocker ? "This project uses Docker." : "",
-      `Project root: ${meta.root}`,
-      "Use tools to read and modify files. Never invent file paths — only act on files you have read.",
-      "Make minimal, targeted edits. Preserve existing formatting and conventions.",
-    ].filter(Boolean).join("\n");
+    const header = meta
+      ? [
+          `You are an expert software engineer working in the "${meta.name}" project.`,
+          `Framework: ${meta.framework}. Language: ${meta.language}.`,
+          meta.packageManager ? `Package manager: ${meta.packageManager}.` : "",
+          meta.database ? `Database: ${meta.database}.` : "",
+          meta.testFramework ? `Tests: ${meta.testFramework}.` : "",
+          meta.usesDocker ? "This project uses Docker." : "",
+          `Project root: ${meta.root}`,
+        ].filter(Boolean).join("\n")
+      : `You are an expert software engineer working in the project at ${root}.`;
+
+    // Forceful agentic directive: implement by calling tools + verify. This is
+    // what stops the model from just printing code in chat.
+    const directive = [
+      "",
+      "HOW YOU MUST WORK — you are an autonomous coding agent, not a chatbot:",
+      "1. IMPLEMENT by calling tools. When a change is needed you MUST actually write it with create_file / write_file / edit_file. NEVER paste code in your reply as the deliverable — pasted code does nothing; only files you write with tools take effect.",
+      "2. Work step by step and finish the WHOLE task: create/modify EVERY file the task requires, one tool call at a time. Read a file before editing it. Don't stop after one file if more are needed.",
+      "3. Make minimal, targeted edits. Never invent file paths — act only on files you have read or created. Preserve existing formatting and conventions.",
+      "4. VERIFY when done: run the build/tests (run_build / run_tests), or start the app (start_dev_server) and test it (http_request / open_in_browser). Read any errors, FIX them, and re-test. Repeat until it actually works.",
+      "5. Only give a short final summary AFTER the files are written and verified — describe what you changed and that it passes, not the code itself.",
+    ].join("\n");
+
+    return header + "\n" + directive;
   }
 
   private memoryBlock(root: string): string {
