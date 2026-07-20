@@ -161,8 +161,11 @@ export function App() {
 
   async function openFile(path: string) {
     setActivePath(path);
-    setSidebarTab("code"); // ensure the code view is showing
-    try { setContent((await api.file(root, path)).content); } catch { setContent(""); }
+    setSidebarTab("code");   // switch sidebar to explorer
+    setShowPreview(false);   // leave preview so the code view is visible
+    setContent("Loading…");
+    try { setContent((await api.file(root, path)).content); }
+    catch (e) { setContent(`// Failed to open ${path}: ${e instanceof Error ? e.message : e}`); }
   }
 
   async function refreshFile(path: string) {

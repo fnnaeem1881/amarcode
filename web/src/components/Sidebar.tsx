@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { ProjectMetadata, ChatSession } from "@amarcode/shared";
+import { FileTree } from "./FileTree.js";
 
 interface FileRow { path: string; language: string; size: number; symbols: number; importance: number }
 
@@ -133,14 +134,8 @@ export function Sidebar({
               {metadata.database && <span className="badge">{metadata.database}</span>}
             </div>
           )}
-          <div className="sb-section">Files ({files.length})</div>
-          {files.slice().sort((a, b) => b.importance - a.importance).map((f) => (
-            <div key={f.path} className={`sb-file ${activePath === f.path ? "active" : ""}`}
-              onClick={() => onOpenFile(f.path)} title={f.path}>
-              {f.path.split("/").pop()}
-            </div>
-          ))}
-          {!files.length && <div className="hint" style={{ padding: "4px 14px" }}>Open a project to see files.</div>}
+          <div className="sb-section">Explorer ({files.length})</div>
+          <FileTree files={files} activePath={activePath} onOpen={onOpenFile} />
         </div>
       )}
 

@@ -70,6 +70,18 @@ input, select, textarea { font-family: inherit; }
 .sb-file { padding: 4px 14px; cursor: pointer; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-file:hover { background: var(--bg-panel); }
 .sb-file.active { background: #094771; }
+
+/* file tree */
+.ft { padding-bottom: 8px; }
+.ft-row { display: flex; align-items: center; gap: 5px; padding: 3px 8px; cursor: pointer; font-size: 12.5px; white-space: nowrap; overflow: hidden; user-select: none; }
+.ft-row:hover { background: var(--bg-panel); }
+.ft-file.active { background: #094771; }
+.ft-caret { width: 12px; color: var(--text-dim); font-size: 10px; flex-shrink: 0; }
+.ft-icon { flex-shrink: 0; font-size: 11px; }
+.ft-name { overflow: hidden; text-overflow: ellipsis; }
+.ft-dir .ft-name { color: var(--text); }
+.ft-file .ft-name { color: var(--text-dim); }
+.ft-file:hover .ft-name, .ft-file.active .ft-name { color: var(--text); }
 .sb-meta { padding: 6px 12px; }
 .sb-settings { border-top: 1px solid var(--border); background: transparent; color: var(--text-dim); border: none; border-top: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 13px; }
 .sb-settings:hover { color: var(--text); background: var(--bg-panel); }
