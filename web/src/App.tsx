@@ -7,6 +7,7 @@ import { Sidebar } from "./components/Sidebar.js";
 import { BottomPanel } from "./components/BottomPanel.js";
 import { Chat } from "./components/Chat.js";
 import { CodeView } from "./components/CodeView.js";
+import { WebPreview } from "./components/WebPreview.js";
 import { Settings } from "./components/Settings.js";
 
 interface FileRow { path: string; language: string; size: number; symbols: number; importance: number }
@@ -34,6 +35,8 @@ export function App() {
   const [showPicker, setShowPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const [terminal, setTerminal] = useState("");
   const [gitRefreshKey, setGitRefreshKey] = useState(0);
@@ -196,11 +199,14 @@ export function App() {
           {projectName && <span className="cc-badge">{projectName}</span>}
           <span className="hint" style={{ marginLeft: 10 }}>{status}</span>
           <div style={{ flex: 1 }} />
+          <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => setShowPreview((v) => !v)}>🌐 Preview</button>
           <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
         </div>
 
         <div className="cc-body">
-          {sidebarTab === "code" ? (
+          {showPreview ? (
+            <WebPreview url={previewUrl} onUrlChange={setPreviewUrl} />
+          ) : sidebarTab === "code" ? (
             <CodeView path={activePath} content={content} projectName={projectName} />
           ) : socketRef.current ? (
             <Chat
@@ -220,7 +226,12 @@ export function App() {
                 api.renameSession(session.id, title).catch(() => {});
               }}
               onDiffApplied={refreshFile}
-              onTerminal={(chunk) => { setTerminal((t) => (t + chunk).slice(-20000)); setShowDrawer(true); }}
+              onTerminal={(chunk) => {
+                setTerminal((t) => (t + chunk).slice(-20000));
+                setShowDrawer(true);
+                const u = detectServerUrl(chunk);
+                if (u) { setPreviewUrl(u); setShowPreview(true); } // auto-open the preview
+              }}
               onGit={() => setGitRefreshKey((k) => k + 1)}
             />
           ) : (
@@ -247,4 +258,15 @@ export function App() {
       {showSettings && <Settings onClose={() => { setShowSettings(false); api.listProviders().then(setProviders); }} />}
     </div>
   );
+}
+
+/** Detect a dev-server URL from streamed terminal output (vite, next, CRA, etc.). */
+function detectServerUrl(chunk: string): string | null {
+  // Direct URL: "Local: http://localhost:5173/", "http://127.0.0.1:3000"
+  const direct = chunk.match(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})/i);
+  if (direct) return `http://localhost:${direct[1]}`;
+  // Phrase: "listening on 3000", "listening on port 3000", "running at :8080"
+  const port = chunk.match(/(?:listening|running|started|ready|serving|available)\b[^\d]{0,20}(\d{4,5})/i);
+  if (port) return `http://localhost:${port[1]}`;
+  return null;
 }
