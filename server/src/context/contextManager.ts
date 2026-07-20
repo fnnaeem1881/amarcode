@@ -151,7 +151,7 @@ export class ContextManager {
       "HOW YOU MUST WORK — you are an autonomous coding agent, not a chatbot:",
       "1. IMPLEMENT by calling tools. When a change is needed you MUST actually write it with create_file / write_file / edit_file. NEVER paste code in your reply as the deliverable — pasted code does nothing; only files you write with tools take effect.",
       "2. Work step by step and finish the WHOLE task: create/modify EVERY file the task requires, one tool call at a time. Read a file before editing it. Don't stop after one file if more are needed.",
-      "3. Make minimal, targeted edits. Never invent file paths — act only on files you have read or created. Preserve existing formatting and conventions.",
+      "3. Make minimal, targeted edits. For an EXISTING file, use edit_file with the smallest exact span that changes — do NOT rewrite the whole file (that wastes tokens). Use write_file only for brand-new files. Never invent file paths — act only on files you have read or created. Preserve existing formatting and conventions.",
       "4. VERIFY when done: run the build/tests (run_build / run_tests), or start the app (start_dev_server) and test it (http_request / open_in_browser). Read any errors, FIX them, and re-test. Repeat until it actually works.",
       "5. Only give a short final summary AFTER the files are written and verified — describe what you changed and that it passes, not the code itself.",
     ].join("\n");

@@ -44,13 +44,18 @@ export class AnthropicProvider implements AIProvider {
       messages: convo,
       stream,
     };
-    if (system) body.system = system;
+    // Prompt caching: mark the big static prefix (system prompt + tool defs) as
+    // cacheable so repeat turns bill it at ~10%. Cache breakpoints go on the
+    // last system block and the last tool.
+    if (system) {
+      body.system = [{ type: "text", text: system, cache_control: { type: "ephemeral" } }];
+    }
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
     if (opts.topP !== undefined) body.top_p = opts.topP;
     if (opts.tools?.length) {
-      body.tools = opts.tools.map((t) => ({
-        name: t.name, description: t.description, input_schema: t.parameters,
-      }));
+      const tools = opts.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
+      (tools[tools.length - 1] as any).cache_control = { type: "ephemeral" };
+      body.tools = tools;
     }
     return body;
   }

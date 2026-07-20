@@ -41,6 +41,7 @@ export function Chat({
   const [elapsed, setElapsed] = useState(0); // seconds since send
   const [tokens, setTokens] = useState(0);   // cumulative tokens this turn
   const [bypass, setBypass] = useState<boolean>(() => localStorage.getItem("bypass") === "1");
+  const [lite, setLite] = useState<boolean>(() => localStorage.getItem("lite") === "1");
   const [providerSel, setProviderSel] = useState<string>("");
   const [modelSel, setModelSel] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
@@ -60,6 +61,7 @@ export function Chat({
   }, [busy]);
 
   useEffect(() => { localStorage.setItem("bypass", bypass ? "1" : "0"); }, [bypass]);
+  useEffect(() => { localStorage.setItem("lite", lite ? "1" : "0"); }, [lite]);
 
   // Hydrate the transcript when switching sessions.
   useEffect(() => {
@@ -123,7 +125,7 @@ export function Chat({
 
     const [providerId, model] = override.split("::");
     socket.chat(
-      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined },
+      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined, lite },
       {
         onText: (d) => { setStep("writing…"); appendAssistant(d); },
         onIteration: (n) => { setIteration(n); setStep("thinking…"); },
@@ -227,6 +229,12 @@ export function Chat({
               onClick={() => setBypass((v) => !v)}
               title={bypass ? "Bypass permissions ON — edits & commands auto-approve (dangerous ops still ask)" : "Turn on bypass to auto-approve edits & commands"}>
               {bypass ? "⚡ Bypass on" : "🛡 Ask each time"}
+            </button>
+            <button
+              className={`cc-bypass ${lite ? "on" : ""}`}
+              onClick={() => setLite((v) => !v)}
+              title={lite ? "Lite mode ON — sends a compact repo map instead of full files (fewer tokens; agent reads files on demand)" : "Turn on Lite to save tokens (compact context)"}>
+              {lite ? "🪶 Lite on" : "🪶 Lite"}
             </button>
 
             <select className="model-pick" value={providerSel}

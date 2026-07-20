@@ -27,6 +27,8 @@ export interface AgentRunOptions {
   override?: ModelRef;
   maxIterations?: number;
   maxTokens?: number;
+  /** Force lite context (repo map, no preloaded files) even for coding tasks. */
+  lite?: boolean;
   signal?: AbortSignal;
   emit: (e: AgentEvent) => void;
   /** Ask the UI for approval; resolves true/false. */
@@ -49,12 +51,14 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
 
   // Token minimisation: a question doesn't need inlined files or edit/git/browser
   // tools. Use a lite context + read-only toolset; the agent reads_file on demand.
+  // The Lite toggle forces the compact context but keeps full tools so it can edit.
   const coding = isCodingTask(task);
   const tools = coding ? toolRegistry.schemas() : toolRegistry.liteSchemas();
+  const liteContext = opts.lite || !coding;
 
   const ctx = await contextManager.build({
     root, task,
-    mode: coding ? "full" : "lite",
+    mode: liteContext ? "lite" : "full",
     maxTokens: opts.maxTokens ?? 16000,
     maxFiles: coding ? 5 : 6,
     recentMessages: [],
