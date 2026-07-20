@@ -13,7 +13,7 @@ type Item =
 
 export function Chat({
   root, session, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
-  onTitle, onDiffApplied, onTerminal, onGit, onPreview,
+  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl,
 }: {
   root: string;
   session: ChatSession | null;
@@ -29,6 +29,7 @@ export function Chat({
   onTerminal: (chunk: string) => void;
   onGit: (text: string) => void;
   onPreview: (url: string) => void;
+  previewUrl: string;
 }) {
   const sessionId = session?.id ?? null;
   const [items, setItems] = useState<Item[]>([]);
@@ -121,7 +122,7 @@ export function Chat({
 
     const [providerId, model] = override.split("::");
     socket.chat(
-      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined },
+      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined },
       {
         onText: (d) => { setStep("writing…"); appendAssistant(d); },
         onIteration: (n) => { setIteration(n); setStep("thinking…"); },

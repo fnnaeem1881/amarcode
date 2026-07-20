@@ -109,8 +109,8 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: "http_request", risk: "safe", run: srv.http_request,
-    description: "Make an HTTP request against the running dev server to test an endpoint and find bugs (non-2xx status or errors are flagged).",
-    parameters: obj({ path: str("Path or full URL, e.g. '/users'"), method: optStr("GET/POST/…"), body: optStr("JSON request body") }, ["path"]),
+    description: "Test a URL/endpoint over HTTP to check the app works (non-2xx or errors are flagged). If the user gives a full URL (e.g. http://localhost:5319/), pass that FULL URL as `path`. Otherwise a relative path uses the running/previewed server's URL.",
+    parameters: obj({ path: str("Full URL if the user gave one (http://localhost:5319/), else a relative path like '/users'"), method: optStr("GET/POST/…"), body: optStr("JSON request body") }, ["path"]),
   },
   {
     name: "git_status", risk: "safe", run: git.git_status,

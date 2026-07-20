@@ -243,6 +243,7 @@ export function App() {
               }}
               onGit={() => setGitRefreshKey((k) => k + 1)}
               onPreview={(url) => { setPreviewUrl(url); setShowPreview(true); }}
+              previewUrl={previewUrl}
             />
           ) : (
             <div className="cc-connecting hint">Connecting to engine…</div>

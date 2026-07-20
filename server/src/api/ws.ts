@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { nanoid } from "nanoid";
 import { runAgent, type AgentEvent } from "../agent/agentLoop.js";
 import * as sessions from "../agent/sessions.js";
+import * as devServer from "../tools/devServer.js";
 
 /**
  * Streaming chat channel. Protocol (JSON messages):
@@ -37,8 +38,11 @@ export function attachWebSocket(server: Server): void {
       }
       if (msg.type !== "chat") return;
 
-      const { sessionId, root, task, override } = msg;
+      const { sessionId, root, task, override, previewUrl } = msg;
       abort = new AbortController();
+
+      // Let the agent's http_request target the URL the user is running/previewing.
+      if (previewUrl) devServer.setExternalUrl(root, previewUrl);
 
       // Persist the user's message.
       if (sessionId) sessions.addMessage(sessionId, { role: "user", content: task });

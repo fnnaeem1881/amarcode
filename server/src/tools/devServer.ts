@@ -17,6 +17,17 @@ interface RunningServer {
 }
 
 const servers = new Map<string, RunningServer>(); // keyed by project root
+const externalUrls = new Map<string, string>(); // URLs the user is previewing/ran themselves
+
+/** Register a URL the user is running/previewing so http_request can target it. */
+export function setExternalUrl(root: string, url: string): void {
+  if (url && url.trim()) externalUrls.set(root, url.trim());
+}
+
+/** Best-known base URL for a project: our dev server, else the user's preview. */
+export function knownUrl(root: string): string | null {
+  return servers.get(root)?.url ?? externalUrls.get(root) ?? null;
+}
 
 export function detectUrl(text: string): string | null {
   const direct = text.match(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})/i);
@@ -89,8 +100,15 @@ export async function httpProbe(
   method = "GET",
   body?: string,
 ): Promise<{ ok: boolean; status: number; body: string; error?: string }> {
-  const base = servers.get(root)?.url;
-  const url = path.startsWith("http") ? path : `${base ?? "http://localhost:3000"}${path.startsWith("/") ? "" : "/"}${path}`;
+  const isAbs = path.startsWith("http");
+  const base = knownUrl(root);
+  if (!isAbs && !base) {
+    return {
+      ok: false, status: 0, body: "",
+      error: "No running server is known for this project. Start one with start_dev_server, or pass a full URL (e.g. http://localhost:5319/).",
+    };
+  }
+  const url = isAbs ? path : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15_000);
