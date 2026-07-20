@@ -126,6 +126,14 @@ input, select, textarea { font-family: inherit; }
 .cc-send:hover:not(:disabled) { background: var(--accent-hover); }
 .cc-send:disabled { opacity: .4; }
 
+/* code view (Code tab) */
+.codeview { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.codeview.empty { align-items: center; justify-content: center; text-align: center; color: var(--text-dim); }
+.codeview-tab { padding: 8px 16px; background: var(--bg-alt); border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: var(--text); }
+.codeview-body { flex: 1; display: flex; overflow: auto; }
+.codeview-body .gutter { margin: 0; padding: 12px 8px 12px 16px; text-align: right; color: var(--text-dim); font-family: var(--mono); font-size: 12.5px; line-height: 1.5; user-select: none; background: var(--bg); position: sticky; left: 0; }
+.codeview-body .code { margin: 0; padding: 12px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; white-space: pre; tab-size: 2; color: var(--text); flex: 1; }
+
 /* drawer */
 .cc-drawer { height: 260px; border-top: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg-panel); }
 .cc-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); }

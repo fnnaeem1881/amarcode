@@ -6,6 +6,7 @@ import { ProjectPicker } from "./components/ProjectPicker.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { BottomPanel } from "./components/BottomPanel.js";
 import { Chat } from "./components/Chat.js";
+import { CodeView } from "./components/CodeView.js";
 import { Settings } from "./components/Settings.js";
 
 interface FileRow { path: string; language: string; size: number; symbols: number; importance: number }
@@ -157,7 +158,7 @@ export function App() {
 
   async function openFile(path: string) {
     setActivePath(path);
-    setShowDrawer(true);
+    setSidebarTab("code"); // ensure the code view is showing
     try { setContent((await api.file(root, path)).content); } catch { setContent(""); }
   }
 
@@ -199,7 +200,9 @@ export function App() {
         </div>
 
         <div className="cc-body">
-          {socketRef.current ? (
+          {sidebarTab === "code" ? (
+            <CodeView path={activePath} content={content} projectName={projectName} />
+          ) : socketRef.current ? (
             <Chat
               root={root}
               session={session}
