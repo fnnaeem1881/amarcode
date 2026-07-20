@@ -13,7 +13,30 @@
   --purple: #c586c0;
   --font: -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: "Cascadia Code", "Fira Code", Consolas, monospace;
+  --active: #094771;
+  --term-bg: #0c0c0c;
 }
+
+/* Light theme — overrides the variables above when data-theme="light". */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-alt: #f4f4f5;
+  --bg-panel: #ececee;
+  --border: #d8d8dc;
+  --text: #1f2328;
+  --text-dim: #6a6f76;
+  --accent: #0969da;
+  --accent-hover: #0860c8;
+  --green: #0a7a66;
+  --yellow: #9a7b00;
+  --red: #cf222e;
+  --purple: #8250df;
+  --active: #ddebff;
+  --term-bg: #1b1b1b;
+}
+:root[data-theme="light"] .sb-file.active,
+:root[data-theme="light"] .ft-file.active,
+:root[data-theme="light"] .sb-session.selected { color: #0969da; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -69,13 +92,13 @@ input, select, textarea { font-family: inherit; }
 .ctx-sep { height: 1px; background: var(--border); margin: 4px 2px; }
 .sb-file { padding: 4px 14px; cursor: pointer; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-file:hover { background: var(--bg-panel); }
-.sb-file.active { background: #094771; }
+.sb-file.active { background: var(--active); }
 
 /* file tree */
 .ft { padding-bottom: 8px; }
 .ft-row { display: flex; align-items: center; gap: 5px; padding: 3px 8px; cursor: pointer; font-size: 12.5px; white-space: nowrap; overflow: hidden; user-select: none; }
 .ft-row:hover { background: var(--bg-panel); }
-.ft-file.active { background: #094771; }
+.ft-file.active { background: var(--active); }
 .ft-caret { width: 12px; color: var(--text-dim); font-size: 10px; flex-shrink: 0; }
 .ft-icon { flex-shrink: 0; font-size: 11px; }
 .ft-name { overflow: hidden; text-overflow: ellipsis; }
@@ -163,7 +186,7 @@ input, select, textarea { font-family: inherit; }
 .btn.sm { padding: 4px 12px; border-radius: 8px; font-size: 12px; }
 .webview-main { flex: 1; display: flex; overflow: hidden; }
 .webview-frame { flex: 1; width: 100%; border: none; background: #fff; }
-.webview-logs { width: 40%; max-width: 480px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: #0c0c0c; }
+.webview-logs { width: 40%; max-width: 480px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: var(--term-bg); }
 .webview-logs-head { padding: 5px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); }
 .webview-logs pre { flex: 1; margin: 0; padding: 8px 10px; overflow: auto; font-family: var(--mono); font-size: 11px; color: #cfcfcf; white-space: pre-wrap; }
 .webview-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-dim); }
@@ -197,7 +220,7 @@ input, select, textarea { font-family: inherit; }
 /* explorer */
 .explorer .file { padding: 2px 12px 2px 20px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .explorer .file:hover { background: var(--bg-panel); }
-.explorer .file.active { background: #094771; }
+.explorer .file.active { background: var(--active); }
 .explorer .file .lang { color: var(--text-dim); font-size: 10px; margin-left: 6px; }
 .meta-card { padding: 8px 12px; font-size: 12px; }
 .meta-card .row { display: flex; justify-content: space-between; padding: 1px 0; }
@@ -217,7 +240,7 @@ input, select, textarea { font-family: inherit; }
 .tabs .tab { padding: 5px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); cursor: pointer; }
 .tabs .tab.active { color: var(--text); border-bottom: 1px solid var(--accent); }
 .tab-body { flex: 1; overflow: auto; padding: 8px 12px; font-family: var(--mono); font-size: 12px; }
-.tab-body.terminal { background: #0c0c0c; color: #cfcfcf; white-space: pre-wrap; }
+.tab-body.terminal { background: var(--term-bg); color: #cfcfcf; white-space: pre-wrap; }
 
 /* chat */
 .chat-header { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
@@ -243,7 +266,7 @@ input, select, textarea { font-family: inherit; }
 .tool-line .tl-add { color: var(--green); font-family: var(--mono); font-size: 11px; }
 .tool-line .tl-del { color: var(--red); font-family: var(--mono); font-size: 11px; }
 .tool-line .tl-err { flex-basis: 100%; color: var(--red); font-family: var(--mono); font-size: 11px; white-space: pre-wrap; margin-top: 3px; }
-.diff { font-family: var(--mono); font-size: 11.5px; white-space: pre; overflow-x: auto; background: #0c0c0c; border-radius: 4px; padding: 6px 8px; margin-top: 4px; }
+.diff { font-family: var(--mono); font-size: 11.5px; white-space: pre; overflow-x: auto; background: var(--term-bg); border-radius: 4px; padding: 6px 8px; margin-top: 4px; }
 .diff .add { color: var(--green); }
 .diff .del { color: var(--red); }
 .diff .meta { color: var(--text-dim); }
@@ -316,7 +339,7 @@ input, select, textarea { font-family: inherit; }
 .git-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); padding: 6px 8px 2px; }
 .git-file { display: flex; align-items: center; gap: 6px; padding: 2px 8px; cursor: pointer; font-family: var(--mono); font-size: 12px; }
 .git-file:hover { background: var(--bg-alt); }
-.git-file.active { background: #094771; }
+.git-file.active { background: var(--active); }
 .git-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .git-badge { width: 15px; text-align: center; font-weight: 700; font-size: 11px; }
 .git-badge.s-M { color: var(--yellow); }

@@ -37,6 +37,7 @@ export function App() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("theme") as "dark" | "light") || "dark");
 
   const [terminal, setTerminal] = useState("");
   const [gitRefreshKey, setGitRefreshKey] = useState(0);
@@ -46,6 +47,12 @@ export function App() {
   const [problems] = useState<string[]>([]);
 
   const socketRef = useRef<AgentSocket | null>(null);
+
+  // Apply + persist the light/dark theme (data-theme drives the CSS variables).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     const s = new AgentSocket();
@@ -208,6 +215,10 @@ export function App() {
           {projectName && <span className="cc-badge">{projectName}</span>}
           <span className="hint" style={{ marginLeft: 10 }}>{status}</span>
           <div style={{ flex: 1 }} />
+          <button className="cc-icon" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => setShowPreview((v) => !v)}>🌐 Preview</button>
           <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
         </div>
