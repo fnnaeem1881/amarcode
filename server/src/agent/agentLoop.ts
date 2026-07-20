@@ -47,8 +47,17 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
   // count as output tokens — a low cap truncates files. Default 4096.
   const maxOut = configStore.getSetting<number>("maxOutputTokens", 4096);
 
+  // Token minimisation: a question doesn't need inlined files or edit/git/browser
+  // tools. Use a lite context + read-only toolset; the agent reads_file on demand.
+  const coding = isCodingTask(task);
+  const tools = coding ? toolRegistry.schemas() : toolRegistry.liteSchemas();
+
   const ctx = await contextManager.build({
-    root, task, maxTokens: opts.maxTokens ?? 16000, maxFiles: opts.maxTokens ? 8 : 5, recentMessages: [],
+    root, task,
+    mode: coding ? "full" : "lite",
+    maxTokens: opts.maxTokens ?? 16000,
+    maxFiles: coding ? 5 : 6,
+    recentMessages: [],
   });
 
   const fileContext = ctx.files
@@ -56,7 +65,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
     .join("\n\n");
 
   const messages: ChatMessageInput[] = [
-    { role: "system", content: `${ctx.systemPrompt}\n\nRelevant project files:\n${fileContext}` },
+    { role: "system", content: ctx.files.length ? `${ctx.systemPrompt}\n\nRelevant project files:\n${fileContext}` : ctx.systemPrompt },
     ...opts.history,
     { role: "user", content: task },
   ];
@@ -82,7 +91,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
 
     for await (const ev of router.streamChat(
       "coding", messages,
-      { tools: toolRegistry.schemas(), stream: true, temperature: 0.2, maxOutputTokens: maxOut, parallelToolCalls: true },
+      { tools, stream: true, temperature: 0.2, maxOutputTokens: maxOut, parallelToolCalls: true },
       opts.override, opts.signal,
     )) {
       if (ev.type === "text") { text += ev.delta; emit({ type: "text", delta: ev.delta }); }
@@ -124,4 +133,9 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
 
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max) + `\n…[truncated ${s.length - max} chars]` : s;
+}
+
+/** Heuristic: does the task ask to change code (vs. just ask a question)? */
+function isCodingTask(task: string): boolean {
+  return /\b(add|create|implement|build|make|fix|bug|refactor|update|change|modify|edit|write|convert|migrate|rename|move|delete|remove|install|configure|setup|set up|integrate|generate|scaffold|optimi[sz]e|upgrade|downgrade|replace|run|test|deploy|commit|debug)\b/i.test(task);
 }

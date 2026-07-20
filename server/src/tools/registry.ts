@@ -177,6 +177,12 @@ export class ToolRegistry {
     return TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
   }
 
+  /** Minimal read-only toolset for answering questions — saves tokens. */
+  liteSchemas(): ToolSchema[] {
+    const lite = new Set(["read_file", "list_directory", "search_text", "search_symbol", "semantic_search"]);
+    return TOOLS.filter((t) => lite.has(t.name)).map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
+  }
+
   descriptors(): ToolDescriptor[] {
     return TOOLS.map(({ run, ...rest }) => rest);
   }

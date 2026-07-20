@@ -24,6 +24,12 @@ export interface ContextOptions {
   maxTokens?: number;
   /** Max number of files to inline. */
   maxFiles?: number;
+  /**
+   * "lite" = don't inline file contents; send a compact repo map (paths +
+   * symbols) and let the agent read_file on demand. Big token saver for
+   * questions and small tasks.
+   */
+  mode?: "full" | "lite";
   recentMessages?: StoredMessage[];
 }
 
@@ -45,6 +51,19 @@ export class ContextManager {
     // Reserve budget: summary + memory + history first, files fill the rest.
     const summary = this.projectSummary(meta, root);
     const memoryBlock = this.memoryBlock(root);
+
+    // LITE MODE: send only a compact repo map (paths + symbols), no file bodies.
+    // The agent reads_file what it actually needs — drastically fewer tokens.
+    if (opts.mode === "lite") {
+      const map = selected.map((e) => {
+        const syms = e.symbols.slice(0, 8).map((s) => s.name).join(", ");
+        return `- ${e.path}${syms ? ` (${syms})` : ""}`;
+      }).join("\n");
+      const systemPrompt = [summary, memoryBlock, map ? `Relevant files (use read_file to open any):\n${map}` : ""]
+        .filter(Boolean).join("\n\n");
+      return { systemPrompt, files: [], tokens: estimateTokens(systemPrompt), selectedPaths: selected.map((e) => e.path) };
+    }
+
     let budget = maxTokens - estimateTokens(summary) - estimateTokens(memoryBlock);
 
     const files: BuiltContext["files"] = [];
