@@ -7,6 +7,7 @@ export interface AgentStreamHandlers {
   onToolEvent?: (event: { type: string; payload: any }) => void;
   onApproval?: (req: { id: string; action: string; risk: string; detail?: string }) => void;
   onIteration?: (n: number) => void;
+  onUsage?: (u: { inputTokens: number; outputTokens: number; totalTokens: number }) => void;
   onDone?: (text: string) => void;
   onError?: (message: string) => void;
 }
@@ -34,6 +35,7 @@ export class AgentSocket {
       case "tool_event": h.onToolEvent?.(e.event); break;
       case "approval_request": h.onApproval?.(e); break;
       case "iteration": h.onIteration?.(e.n); break;
+      case "usage": h.onUsage?.({ inputTokens: e.inputTokens, outputTokens: e.outputTokens, totalTokens: e.totalTokens }); break;
       case "done": h.onDone?.(e.text); break;
       case "error": h.onError?.(e.message); break;
     }

@@ -37,6 +37,7 @@ export function Chat({
   const [step, setStep] = useState("");      // current activity label
   const [iteration, setIteration] = useState(0);
   const [elapsed, setElapsed] = useState(0); // seconds since send
+  const [tokens, setTokens] = useState(0);   // cumulative tokens this turn
   const [bypass, setBypass] = useState<boolean>(() => localStorage.getItem("bypass") === "1");
   const [providerSel, setProviderSel] = useState<string>("");
   const [modelSel, setModelSel] = useState<string>("");
@@ -116,7 +117,7 @@ export function Chat({
     push({ kind: "user", text: task });
     setInput("");
     setBusy(true);
-    setElapsed(0); setIteration(0); setStep("thinking…");
+    setElapsed(0); setIteration(0); setStep("thinking…"); setTokens(0);
 
     const [providerId, model] = override.split("::");
     socket.chat(
@@ -124,6 +125,7 @@ export function Chat({
       {
         onText: (d) => { setStep("writing…"); appendAssistant(d); },
         onIteration: (n) => { setIteration(n); setStep("thinking…"); },
+        onUsage: (u) => setTokens(u.totalTokens),
         onToolStart: (call) => { setStep(`running ${call.name}…`); push({ kind: "tool", name: call.name, args: call.arguments, status: "running" }); },
         onToolResult: (call, result) => {
           const stat = diffStat(result.data?.unified);
@@ -165,6 +167,7 @@ export function Chat({
 
   const insertSlash = (cmd: string) => { setInput((v) => (v ? v + " " : "") + cmd); setMenuOpen(false); };
   const fmtTime = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
+  const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
 
   return (
     <div className="cc-chat">
@@ -183,8 +186,12 @@ export function Chat({
               <span className="cc-working-dot" />
               <span className="cc-working-text">Working{iteration ? ` · step ${iteration}` : ""} · {step || "…"}</span>
               <span className="cc-working-time">{fmtTime(elapsed)}</span>
+              {tokens > 0 && <span className="cc-working-tokens">{fmtTokens(tokens)} tokens</span>}
               {bypass && <span className="cc-working-bypass">bypass on</span>}
             </div>
+          )}
+          {!busy && tokens > 0 && items.length > 0 && (
+            <div className="cc-turnstat">✓ {fmtTime(elapsed)} · {fmtTokens(tokens)} tokens</div>
           )}
         </div>
       </div>

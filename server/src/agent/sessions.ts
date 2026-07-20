@@ -65,9 +65,21 @@ export function getMessages(sessionId: string): StoredMessage[] {
 export function historyForModel(sessionId: string, keep = 12): ChatMessageInput[] {
   const all = getMessages(sessionId);
   const recent = all.slice(-keep);
-  return recent.map((m) => ({
-    role: m.role, content: m.content, toolCalls: m.toolCalls, toolCallId: m.toolCallId,
-  }));
+  // Cap total history size so one huge past reply can't bloat the request and
+  // make it slow/fail. Truncate long messages and bound the overall budget.
+  const MAX_MSG_CHARS = 4000;
+  const MAX_TOTAL_CHARS = 24_000;
+  let total = 0;
+  const out: ChatMessageInput[] = [];
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const m = recent[i];
+    let content = m.content ?? "";
+    if (content.length > MAX_MSG_CHARS) content = content.slice(0, MAX_MSG_CHARS) + "\n…[truncated]";
+    if (total + content.length > MAX_TOTAL_CHARS && out.length) break;
+    total += content.length;
+    out.unshift({ role: m.role, content, toolCalls: m.toolCalls, toolCallId: m.toolCallId });
+  }
+  return out;
 }
 
 function rowToSession(r: any): ChatSession {

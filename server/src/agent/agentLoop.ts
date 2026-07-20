@@ -16,6 +16,7 @@ export type AgentEvent =
   | { type: "tool_event"; event: { type: string; payload: unknown } }
   | { type: "approval_request"; id: string; action: string; risk: string; detail?: string }
   | { type: "iteration"; n: number }
+  | { type: "usage"; inputTokens: number; outputTokens: number; totalTokens: number }
   | { type: "done"; text: string }
   | { type: "error"; message: string };
 
@@ -66,6 +67,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
   };
 
   let finalText = "";
+  let cumIn = 0, cumOut = 0; // cumulative token usage across iterations
 
   for (let iter = 0; iter < maxIterations; iter++) {
     if (opts.signal?.aborted) { emit({ type: "error", message: "Cancelled" }); break; }
@@ -90,6 +92,8 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
     }
 
     if (providerUsed) recordCost(root, providerUsed, modelUsed, usage);
+    cumIn += usage.inputTokens; cumOut += usage.outputTokens;
+    emit({ type: "usage", inputTokens: cumIn, outputTokens: cumOut, totalTokens: cumIn + cumOut });
     finalText = text || finalText;
 
     if (!toolCalls.length) {

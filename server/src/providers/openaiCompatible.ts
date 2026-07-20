@@ -131,7 +131,7 @@ export class OpenAICompatibleProvider implements AIProvider {
       body: this.body(messages, opts, true),
       providerId: this.config.id,
       timeoutMs: STREAM_TIMEOUT_MS,
-      maxRetries: 0,
+      maxRetries: 2, // retry only happens at connect time (before body) — safe
       signal,
     });
 

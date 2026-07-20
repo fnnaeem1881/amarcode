@@ -109,7 +109,9 @@ input, select, textarea { font-family: inherit; }
 @keyframes cc-pulse { 0%,100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
 .cc-working-text { color: var(--text); }
 .cc-working-time { font-variant-numeric: tabular-nums; }
+.cc-working-tokens { color: var(--purple); font-variant-numeric: tabular-nums; }
 .cc-working-bypass { color: var(--yellow); border: 1px solid var(--yellow); border-radius: 10px; padding: 0 7px; font-size: 10px; }
+.cc-turnstat { padding: 6px 4px; color: var(--text-dim); font-size: 12px; }
 
 /* bypass toggle */
 .cc-bypass { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }
