@@ -106,8 +106,12 @@ export function App() {
     }
   }
 
+  // Return to the chat view (used whenever a session/project action happens).
+  function showChat() { setSidebarTab("home"); setShowPreview(false); }
+
   // Open a project from the picker: switch root and select/create its session.
   async function openProjectFromPicker(dir: string) {
+    showChat();
     setRoot(dir);
     const list = await api.sessions(dir).catch(() => []);
     if (list.length) setSession(list[0]);
@@ -121,11 +125,13 @@ export function App() {
 
   // Selecting a session switches the working directory to that session's project.
   function selectSession(s: ChatSession) {
+    showChat();
     setSession(s);
     if (s.projectRoot !== root) setRoot(s.projectRoot);
   }
 
   async function newSession() {
+    showChat();
     if (!root) { setShowPicker(true); return; }
     const s = await api.createSession(root, "New chat");
     setAllSessions((xs) => [s, ...xs]);
