@@ -71,6 +71,11 @@ export const api = {
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
   renameSession: (id: string, title: string) => j(`/api/sessions/${id}/title`, { method: "POST", body: JSON.stringify({ title }) }),
 
+  // preview / dev server
+  previewStatus: (root: string) => j<{ running: boolean; url: string | null; command: string | null; logs: string; exited: boolean; exitCode: number | null }>(`/api/preview/status?root=${encodeURIComponent(root)}`),
+  previewStart: (root: string, command: string) => j<{ running: boolean; url: string | null; logs: string }>("/api/preview/start", { method: "POST", body: JSON.stringify({ root, command }) }),
+  previewStop: (root: string) => j("/api/preview/stop", { method: "POST", body: JSON.stringify({ root }) }),
+
   // git
   gitStatus: (root: string) => j<GitStatus>(`/api/git/status?root=${encodeURIComponent(root)}`),
   gitDiff: (root: string, path?: string, staged?: boolean) => j<{ diff: string }>(`/api/git/diff?root=${encodeURIComponent(root)}${path ? `&path=${encodeURIComponent(path)}` : ""}${staged ? "&staged=true" : ""}`),

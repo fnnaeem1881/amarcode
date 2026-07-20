@@ -13,7 +13,7 @@ type Item =
 
 export function Chat({
   root, session, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
-  onTitle, onDiffApplied, onTerminal, onGit,
+  onTitle, onDiffApplied, onTerminal, onGit, onPreview,
 }: {
   root: string;
   session: ChatSession | null;
@@ -28,6 +28,7 @@ export function Chat({
   onDiffApplied: (path: string) => void;
   onTerminal: (chunk: string) => void;
   onGit: (text: string) => void;
+  onPreview: (url: string) => void;
 }) {
   const sessionId = session?.id ?? null;
   const [items, setItems] = useState<Item[]>([]);
@@ -140,6 +141,7 @@ export function Chat({
         onToolEvent: (event) => {
           if (event.type === "terminal") onTerminal(event.payload);
           if (event.type === "diff") push({ kind: "diff", unified: event.payload.unified });
+          if (event.type === "preview" && event.payload?.url) onPreview(event.payload.url);
         },
         onApproval: (req) => {
           // Bypass mode auto-approves everything except dangerous operations.

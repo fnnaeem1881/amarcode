@@ -4,6 +4,7 @@ import * as file from "./fileTools.js";
 import * as search from "./searchTools.js";
 import * as git from "./gitTools.js";
 import * as term from "./terminalTools.js";
+import * as srv from "./serverTools.js";
 
 type Executor = (ctx: ToolContext, args: any) => Promise<ToolResult>;
 
@@ -90,6 +91,26 @@ const TOOLS: ToolDef[] = [
     name: "run_build", risk: "confirm", run: term.run_build,
     description: "Build the project.",
     parameters: obj({ command: optStr("Override build command") }, []),
+  },
+  {
+    name: "start_dev_server", risk: "confirm", run: srv.start_dev_server,
+    description: "Start a long-running dev server (e.g. 'npm run dev') in the background and detect its URL. Use this to run a web app, then test it. Keeps running (unlike run_terminal).",
+    parameters: obj({ command: str("Command that starts the server, e.g. 'npm run dev'") }, ["command"]),
+  },
+  {
+    name: "stop_dev_server", risk: "safe", run: srv.stop_dev_server,
+    description: "Stop the running dev server.",
+    parameters: obj({}, []),
+  },
+  {
+    name: "get_server_logs", risk: "safe", run: srv.get_server_logs,
+    description: "Read the running dev server's stdout/stderr — use this to find errors, stack traces and crashes.",
+    parameters: obj({ lines: { type: "number", description: "How many recent lines" } }, []),
+  },
+  {
+    name: "http_request", risk: "safe", run: srv.http_request,
+    description: "Make an HTTP request against the running dev server to test an endpoint and find bugs (non-2xx status or errors are flagged).",
+    parameters: obj({ path: str("Path or full URL, e.g. '/users'"), method: optStr("GET/POST/…"), body: optStr("JSON request body") }, ["path"]),
   },
   {
     name: "git_status", risk: "safe", run: git.git_status,

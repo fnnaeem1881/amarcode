@@ -17,6 +17,7 @@ import { getMemory, saveMemory, ensureMemory } from "../agent/memory.js";
 import { toolRegistry } from "../tools/registry.js";
 import * as gitSvc from "./gitService.js";
 import * as fsBrowse from "./fsBrowse.js";
+import * as devServer from "../tools/devServer.js";
 
 export const api = Router();
 
@@ -219,6 +220,17 @@ api.post("/git/discard", async (req, res) => {
   try { await gitSvc.discard(root(req), req.body.path); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: msg(e) }); }
 });
+
+/* --------------------------------- Preview ------------------------------- */
+
+api.get("/preview/status", (req, res) => res.json(devServer.serverStatus(root(req))));
+api.post("/preview/start", async (req, res) => {
+  const { root: r, command } = req.body as { root: string; command: string };
+  devServer.startServer(r, command);
+  const url = await devServer.waitForUrl(r);
+  res.json({ ...devServer.serverStatus(r), url });
+});
+api.post("/preview/stop", (req, res) => { devServer.stopServer(root(req)); res.json({ ok: true }); });
 
 /* ---------------------------------- Cost --------------------------------- */
 

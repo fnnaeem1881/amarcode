@@ -205,7 +205,7 @@ export function App() {
 
         <div className="cc-body">
           {showPreview ? (
-            <WebPreview url={previewUrl} onUrlChange={setPreviewUrl} />
+            <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
           ) : sidebarTab === "code" ? (
             <CodeView path={activePath} content={content} projectName={projectName} />
           ) : socketRef.current ? (
@@ -233,6 +233,7 @@ export function App() {
                 if (u) { setPreviewUrl(u); setShowPreview(true); } // auto-open the preview
               }}
               onGit={() => setGitRefreshKey((k) => k + 1)}
+              onPreview={(url) => { setPreviewUrl(url); setShowPreview(true); }}
             />
           ) : (
             <div className="cc-connecting hint">Connecting to engine…</div>
