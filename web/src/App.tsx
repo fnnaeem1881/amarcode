@@ -144,6 +144,17 @@ export function App() {
     await api.renameSession(id, title).catch(() => {});
   }
 
+  async function deleteSessions(ids: string[]) {
+    const set = new Set(ids);
+    await Promise.all(ids.map((id) => api.deleteSession(id).catch(() => {})));
+    setAllSessions((xs) => xs.filter((s) => !set.has(s.id)));
+    if (session && set.has(session.id)) {
+      const next = allSessions.find((s) => !set.has(s.id)) ?? null;
+      setSession(next);
+      if (next && next.projectRoot !== root) setRoot(next.projectRoot);
+    }
+  }
+
   async function openFile(path: string) {
     setActivePath(path);
     setShowDrawer(true);
@@ -173,7 +184,7 @@ export function App() {
         tab={sidebarTab} setTab={setSidebarTab}
         projectName={projectName}
         sessions={allSessions} activeSessionId={session?.id ?? null}
-        onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession} onRenameSession={renameSession}
+        onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession} onRenameSession={renameSession} onDeleteSessions={deleteSessions}
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
         onOpenProject={() => setShowPicker(true)} onSettings={() => setShowSettings(true)}
       />

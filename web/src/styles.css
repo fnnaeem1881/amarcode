@@ -43,6 +43,13 @@ input, select, textarea { font-family: inherit; }
 .sb-session { display: flex; align-items: center; gap: 7px; padding: 7px 14px; cursor: pointer; font-size: 13px; overflow: hidden; }
 .sb-session:hover { background: var(--bg-panel); }
 .sb-session.active { background: var(--bg-panel); }
+.sb-session.selected { background: #0d3a5c; box-shadow: inset 2px 0 0 var(--accent); }
+.sb-session.selected:hover { background: #10496f; }
+.sb-selbar { display: flex; align-items: center; gap: 6px; padding: 6px 12px; margin: 4px 8px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+.sb-selbar button { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 11px; }
+.sb-selbar button:hover { background: var(--bg); }
+.sb-selbar button.danger { color: var(--red); border-color: var(--red); }
+.sb-selbar button.danger:hover { background: rgba(241,76,76,.12); }
 .sb-session .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
 .sb-session-text { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .sb-session .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
