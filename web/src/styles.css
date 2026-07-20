@@ -139,6 +139,14 @@ input, select, textarea { font-family: inherit; }
 .shot-cap { padding: 5px 10px; font-size: 11px; color: var(--text-dim); font-family: var(--mono); border-bottom: 1px solid var(--border); }
 .shot img { display: block; width: 100%; }
 
+/* image attachments */
+.cc-attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px 0; }
+.cc-thumb { position: relative; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.cc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cc-thumb button { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border: none; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; line-height: 1; padding: 0; }
+.msg-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.msg-imgs img { max-width: 220px; max-height: 220px; border-radius: 6px; border: 1px solid var(--border); }
+
 /* bypass toggle */
 .cc-bypass { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }
 .cc-bypass:hover { border-color: var(--accent); }

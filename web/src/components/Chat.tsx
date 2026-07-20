@@ -5,7 +5,7 @@ import { api } from "../api.js";
 import { DiffView } from "./DiffView.js";
 
 type Item =
-  | { kind: "user"; text: string }
+  | { kind: "user"; text: string; images?: string[] }
   | { kind: "assistant"; text: string }
   | { kind: "tool"; name: string; args: any; status: "running" | "ok" | "fail"; output?: string; add?: number; del?: number }
   | { kind: "diff"; unified: string }
@@ -47,7 +47,9 @@ export function Chat({
   const [models, setModels] = useState<string[]>([]);
   const [activeLabel, setActiveLabel] = useState<string>("default");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]); // image data URIs
   const logRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
@@ -111,21 +113,37 @@ export function Chat({
       return [...xs, { kind: "assistant", text: delta }];
     });
 
+  // Image attachment helpers (paste + upload).
+  const addFiles = (files: FileList | File[]) => {
+    for (const f of Array.from(files)) {
+      if (!f.type.startsWith("image/")) continue;
+      const reader = new FileReader();
+      reader.onload = () => setAttachments((a) => [...a, String(reader.result)]);
+      reader.readAsDataURL(f);
+    }
+  };
+  const onPaste = (e: React.ClipboardEvent) => {
+    const imgs = Array.from(e.clipboardData.items).filter((i) => i.type.startsWith("image/")).map((i) => i.getAsFile()).filter(Boolean) as File[];
+    if (imgs.length) { e.preventDefault(); addFiles(imgs); }
+  };
+
   const send = () => {
     const task = input.trim();
-    if (!task || busy) return;
+    if ((!task && attachments.length === 0) || busy) return;
     // Title the session from its first user message (like Claude Code).
     if (!items.some((i) => i.kind === "user")) {
       onTitle(task.length > 48 ? task.slice(0, 48) + "…" : task);
     }
-    push({ kind: "user", text: task });
+    const images = attachments;
+    push({ kind: "user", text: task, images });
     setInput("");
+    setAttachments([]);
     setBusy(true);
     setElapsed(0); setIteration(0); setStep("thinking…"); setTokens(0);
 
     const [providerId, model] = override.split("::");
     socket.chat(
-      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined, lite },
+      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined, lite, images: images.length ? images : undefined },
       {
         onText: (d) => { setStep("writing…"); appendAssistant(d); },
         onIteration: (n) => { setIteration(n); setStep("thinking…"); },
@@ -203,18 +221,32 @@ export function Chat({
 
       <div className="cc-composer-wrap">
         <div className="cc-composer">
+          {attachments.length > 0 && (
+            <div className="cc-attachments">
+              {attachments.map((src, i) => (
+                <div className="cc-thumb" key={i}>
+                  <img src={src} alt="attachment" />
+                  <button title="Remove" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
           <textarea
             value={input}
-            placeholder="Type / for commands, or ask the assistant to build, fix, or refactor…"
+            placeholder="Type / for commands, paste or attach an image, or ask the assistant…"
             onChange={(e) => setInput(e.target.value)}
+            onPaste={onPaste}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
+            onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
 
           <div className="cc-composer-bar">
             <div className="cc-plus">
               <button className="cc-icon" title="Add" onClick={() => setMenuOpen((v) => !v)}>＋</button>
               {menuOpen && (
                 <div className="cc-menu" onMouseLeave={() => setMenuOpen(false)}>
+                  <button onClick={() => { fileInputRef.current?.click(); setMenuOpen(false); }}>🖼 Add image / photo</button>
                   <button onClick={() => { onOpenProject(); setMenuOpen(false); }}>📁 Add folder</button>
                   <button onClick={() => { onOpenPanel(); setMenuOpen(false); }}>🗂 Open panel (files/terminal/git)</button>
                   <button onClick={() => insertSlash("/plan ")}>⌗ Slash: /plan</button>
@@ -223,6 +255,8 @@ export function Chat({
                 </div>
               )}
             </div>
+
+            <button className="cc-icon" title="Attach image" onClick={() => fileInputRef.current?.click()}>🖼</button>
 
             <button
               className={`cc-bypass ${bypass ? "on" : ""}`}
@@ -271,7 +305,15 @@ export function Chat({
 }
 
 function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok: boolean) => void }) {
-  if (item.kind === "user") return <div className="msg user"><div className="who">You</div><div className="bubble">{item.text}</div></div>;
+  if (item.kind === "user") return (
+    <div className="msg user">
+      <div className="who">You</div>
+      <div className="bubble">
+        {item.images?.length ? <div className="msg-imgs">{item.images.map((src, i) => <img key={i} src={src} alt="attachment" />)}</div> : null}
+        {item.text}
+      </div>
+    </div>
+  );
   if (item.kind === "assistant") return <div className="msg assistant"><div className="who">Assistant</div><div className="bubble">{item.text}</div></div>;
   if (item.kind === "tool") {
     const { verb, target } = toolLabel(item.name, item.args);

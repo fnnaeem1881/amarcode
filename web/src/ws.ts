@@ -41,7 +41,7 @@ export class AgentSocket {
     }
   }
 
-  chat(payload: { sessionId?: string; root: string; task: string; override?: { providerId: string; model: string }; previewUrl?: string; lite?: boolean }, handlers: AgentStreamHandlers): void {
+  chat(payload: { sessionId?: string; root: string; task: string; override?: { providerId: string; model: string }; previewUrl?: string; lite?: boolean; images?: string[] }, handlers: AgentStreamHandlers): void {
     this.handlers = handlers;
     this.ws?.send(JSON.stringify({ type: "chat", ...payload }));
   }

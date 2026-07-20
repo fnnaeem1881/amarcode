@@ -99,6 +99,8 @@ export interface ChatMessageInput {
   toolCallId?: string;
   /** For assistant messages that requested tools. */
   toolCalls?: ToolCall[];
+  /** Attached images as data URIs (data:image/png;base64,…) — vision input. */
+  images?: string[];
 }
 
 export interface ToolCall {

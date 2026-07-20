@@ -245,6 +245,15 @@ function toOpenAIMessage(m: ChatMessageInput): Record<string, unknown> {
       })),
     };
   }
+  if (m.role === "user" && m.images?.length) {
+    return {
+      role: "user",
+      content: [
+        ...(m.content ? [{ type: "text", text: m.content }] : []),
+        ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
+      ],
+    };
+  }
   return { role: m.role, content: m.content };
 }
 

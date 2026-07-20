@@ -172,7 +172,20 @@ function toAnthropicMessage(m: ChatMessageInput): Record<string, unknown> {
     for (const tc of m.toolCalls) content.push({ type: "tool_use", id: tc.id, name: tc.name, input: tc.arguments });
     return { role: "assistant", content };
   }
+  if (m.role === "user" && m.images?.length) {
+    const content: unknown[] = m.content ? [{ type: "text", text: m.content }] : [];
+    for (const uri of m.images) {
+      const parsed = parseDataUri(uri);
+      if (parsed) content.push({ type: "image", source: { type: "base64", media_type: parsed.mime, data: parsed.data } });
+    }
+    return { role: "user", content };
+  }
   return { role: m.role === "assistant" ? "assistant" : "user", content: m.content };
+}
+
+function parseDataUri(uri: string): { mime: string; data: string } | null {
+  const m = uri.match(/^data:([^;]+);base64,(.+)$/);
+  return m ? { mime: m[1], data: m[2] } : null;
 }
 
 function safeParse(s: string): Record<string, unknown> {

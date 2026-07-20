@@ -159,5 +159,13 @@ function toGeminiContent(m: ChatMessageInput): Record<string, unknown> {
     for (const tc of m.toolCalls) parts.push({ functionCall: { name: tc.name, args: tc.arguments } });
     return { role: "model", parts };
   }
+  if (m.role === "user" && m.images?.length) {
+    const parts: unknown[] = m.content ? [{ text: m.content }] : [];
+    for (const uri of m.images) {
+      const mt = uri.match(/^data:([^;]+);base64,(.+)$/);
+      if (mt) parts.push({ inlineData: { mimeType: mt[1], data: mt[2] } });
+    }
+    return { role: "user", parts };
+  }
   return { role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] };
 }

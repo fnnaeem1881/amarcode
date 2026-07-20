@@ -29,6 +29,8 @@ export interface AgentRunOptions {
   maxTokens?: number;
   /** Force lite context (repo map, no preloaded files) even for coding tasks. */
   lite?: boolean;
+  /** Attached images (data URIs) for vision-capable models. */
+  images?: string[];
   signal?: AbortSignal;
   emit: (e: AgentEvent) => void;
   /** Ask the UI for approval; resolves true/false. */
@@ -71,7 +73,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<string> {
   const messages: ChatMessageInput[] = [
     { role: "system", content: ctx.files.length ? `${ctx.systemPrompt}\n\nRelevant project files:\n${fileContext}` : ctx.systemPrompt },
     ...opts.history,
-    { role: "user", content: task },
+    { role: "user", content: task, images: opts.images },
   ];
 
   const toolCtx: ToolContext = {
