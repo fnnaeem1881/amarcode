@@ -9,6 +9,7 @@ type Item =
   | { kind: "assistant"; text: string }
   | { kind: "tool"; name: string; args: any; status: "running" | "ok" | "fail"; output?: string; add?: number; del?: number }
   | { kind: "diff"; unified: string }
+  | { kind: "screenshot"; image: string; url: string }
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
 
 export function Chat({
@@ -145,6 +146,7 @@ export function Chat({
           if (event.type === "terminal") onTerminal(event.payload);
           if (event.type === "diff") push({ kind: "diff", unified: event.payload.unified });
           if (event.type === "preview" && event.payload?.url) onPreview(event.payload.url);
+          if (event.type === "screenshot" && event.payload?.image) push({ kind: "screenshot", image: event.payload.image, url: event.payload.url });
         },
         onApproval: (req) => {
           // Bypass mode auto-approves everything except dangerous operations.
@@ -277,6 +279,13 @@ function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok:
     );
   }
   if (item.kind === "diff") return <DiffView unified={item.unified} />;
+  if (item.kind === "screenshot")
+    return (
+      <div className="shot">
+        <div className="shot-cap">🖥 {item.url}</div>
+        <img src={item.image} alt="browser screenshot" />
+      </div>
+    );
   if (item.kind === "approval")
     return (
       <div className={`approval ${item.risk === "dangerous" ? "dangerous" : ""}`}>

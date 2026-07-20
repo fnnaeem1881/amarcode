@@ -5,6 +5,7 @@ import * as search from "./searchTools.js";
 import * as git from "./gitTools.js";
 import * as term from "./terminalTools.js";
 import * as srv from "./serverTools.js";
+import * as web from "./browserTools.js";
 
 type Executor = (ctx: ToolContext, args: any) => Promise<ToolResult>;
 
@@ -106,6 +107,36 @@ const TOOLS: ToolDef[] = [
     name: "get_server_logs", risk: "safe", run: srv.get_server_logs,
     description: "Read the running dev server's stdout/stderr — use this to find errors, stack traces and crashes.",
     parameters: obj({ lines: { type: "number", description: "How many recent lines" } }, []),
+  },
+  {
+    name: "open_in_browser", risk: "safe", run: web.open_in_browser,
+    description: "Open the running web app in a real (headless) browser and return the rendered page: title, visible text, clickable elements, form inputs, and any JavaScript/console errors. Use this to test the UI like a human.",
+    parameters: obj({ url: optStr("Full URL (defaults to the running/previewed server)") }, []),
+  },
+  {
+    name: "browser_click", risk: "safe", run: web.browser_click,
+    description: "Click an element in the browser by its visible text (e.g. 'Login', 'Add to cart') or a CSS selector. Returns the updated page + any errors.",
+    parameters: obj({ text: str("Visible text of the button/link, or a CSS selector") }, ["text"]),
+  },
+  {
+    name: "browser_type", risk: "safe", run: web.browser_type,
+    description: "Type a value into a form field (by CSS selector) in the browser.",
+    parameters: obj({ selector: str("CSS selector of the input"), value: str("Text to type") }, ["selector", "value"]),
+  },
+  {
+    name: "browser_scroll", risk: "safe", run: web.browser_scroll,
+    description: "Scroll the browser page up or down to reveal more content.",
+    parameters: obj({ direction: { type: "string", enum: ["down", "up"], description: "Scroll direction" } }, []),
+  },
+  {
+    name: "browser_read", risk: "safe", run: web.browser_read,
+    description: "Re-read the current browser page (text, clickables, inputs, console errors) after an interaction.",
+    parameters: obj({}, []),
+  },
+  {
+    name: "close_browser", risk: "safe", run: web.close_browser,
+    description: "Close the headless test browser.",
+    parameters: obj({}, []),
   },
   {
     name: "http_request", risk: "safe", run: srv.http_request,
