@@ -41,7 +41,9 @@ export function ProjectPicker({ onPick, onClose }: { onPick: (dir: string) => vo
   };
 
   const open = async () => {
-    const dir = listing?.dir ?? pathInput.trim();
+    // Prefer a path the user typed/pasted; fall back to the browsed folder.
+    const typed = pathInput.trim();
+    const dir = typed && typed !== listing?.dir ? typed : (listing?.dir ?? typed);
     const v = await api.fsValidate(dir).catch(() => ({ valid: false } as any));
     if (!v.valid) { setError(`Not a folder: ${dir}`); return; }
     onPick(dir);

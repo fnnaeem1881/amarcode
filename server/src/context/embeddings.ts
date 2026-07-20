@@ -47,6 +47,9 @@ export class EmbeddingIndex {
       });
       done++;
       if (done % 25 === 0) onProgress?.(done);
+      // Yield to the event loop every few files so the engine stays responsive
+      // (embedding is CPU-bound and would otherwise freeze all other requests).
+      if (done % 5 === 0) await yieldToLoop();
     }
     onProgress?.(done);
     return this.embeddedChunks;
@@ -87,6 +90,10 @@ export class EmbeddingIndex {
     }
     return texts.map(localEmbedding);
   }
+}
+
+function yieldToLoop(): Promise<void> {
+  return new Promise((r) => setImmediate(r));
 }
 
 function chunkText(content: string): { text: string }[] {

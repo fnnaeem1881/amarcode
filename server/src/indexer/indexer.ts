@@ -66,6 +66,8 @@ export class Indexer {
         this.stats = { ...this.stats, indexedFiles: indexed, skippedFiles: skipped, totalSymbols };
         onProgress?.(this.stats);
       }
+      // Yield often so parsing a large project doesn't freeze the engine.
+      if ((indexed + skipped) % 40 === 0) await new Promise((r) => setImmediate(r));
     }
 
     // Prune entries for deleted files.
