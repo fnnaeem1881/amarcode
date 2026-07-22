@@ -232,6 +232,23 @@ api.post("/preview/start", async (req, res) => {
 });
 api.post("/preview/stop", (req, res) => { devServer.stopServer(root(req)); res.json({ ok: true }); });
 
+/* ------------------------------ Image generation ------------------------- */
+
+api.post("/image/generate", async (req, res) => {
+  const { providerId, model, prompt } = req.body as { providerId: string; model: string; prompt: string };
+  try {
+    const provider: any = createProvider(configStore.getProvider(providerId)!);
+    if (typeof provider.generateImages !== "function") {
+      return res.status(400).json({ error: "This provider does not support image generation." });
+    }
+    const images = await provider.generateImages(prompt, model);
+    if (!images.length) return res.status(502).json({ error: "The model returned no image. Try a dedicated image model (e.g. google/gemini-2.5-flash-image)." });
+    res.json({ images });
+  } catch (e) {
+    res.status(500).json({ error: msg(e) });
+  }
+});
+
 /* ---------------------------------- Cost --------------------------------- */
 
 api.get("/cost", (_req, res) => res.json(costSummary()));

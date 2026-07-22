@@ -67,6 +67,8 @@ export interface ModelInfo {
   supportsTools?: boolean;
   /** Model accepts image input (vision). */
   vision?: boolean;
+  /** Model can generate images (image output). */
+  imageGen?: boolean;
   /** USD per 1M tokens. */
   inputPrice?: number;
   outputPrice?: number;

@@ -8,6 +8,7 @@ import { BottomPanel } from "./components/BottomPanel.js";
 import { Chat } from "./components/Chat.js";
 import { CodeView } from "./components/CodeView.js";
 import { WebPreview } from "./components/WebPreview.js";
+import { ImageGen } from "./components/ImageGen.js";
 import { Settings } from "./components/Settings.js";
 
 interface FileRow { path: string; language: string; size: number; symbols: number; importance: number }
@@ -36,6 +37,7 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showImageGen, setShowImageGen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("theme") as "dark" | "light") || "dark");
 
@@ -139,6 +141,13 @@ export function App() {
 
   async function newSession() {
     showChat();
+    setShowImageGen(false);
+    // Don't create another blank session if the current one is already an empty
+    // "New chat" — just keep it (avoids piling up empty sessions).
+    if (session && session.title === "New chat") {
+      const msgs = await api.messages(session.id).catch(() => []);
+      if (msgs.length === 0) return;
+    }
     if (!root) { setShowPicker(true); return; }
     const s = await api.createSession(root, "New chat");
     setAllSessions((xs) => [s, ...xs]);
@@ -219,12 +228,15 @@ export function App() {
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => setShowPreview((v) => !v)}>🌐 Preview</button>
+          <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { setShowImageGen((v) => !v); setShowPreview(false); }}>🎨 Image</button>
+          <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => { setShowPreview((v) => !v); setShowImageGen(false); }}>🌐 Preview</button>
           <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
         </div>
 
         <div className="cc-body">
-          {showPreview ? (
+          {showImageGen ? (
+            <ImageGen providers={providers} />
+          ) : showPreview ? (
             <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
           ) : sidebarTab === "code" ? (
             <CodeView path={activePath} content={content} projectName={projectName} />

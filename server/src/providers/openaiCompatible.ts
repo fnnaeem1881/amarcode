@@ -215,12 +215,44 @@ export class OpenAICompatibleProvider implements AIProvider {
         : typeof modalities === "string"
           ? /image/.test(modalities)
           : visionHeuristic(id);
-      return { id, providerId: this.config.id, label: id, contextWindow: m.context_length ?? m.context_window, vision };
+      const outMod = m.architecture?.output_modalities;
+      const imageGen = Array.isArray(outMod) ? outMod.includes("image") : /-image\b|image-\d|dall-e|imagen|flux|stable-diffusion|sdxl/i.test(id);
+      return { id, providerId: this.config.id, label: id, contextWindow: m.context_length ?? m.context_window, vision, imageGen };
     });
   }
 
   countTokens(text: string): number {
     return estimateTokens(text);
+  }
+
+  /**
+   * Generate image(s) from a prompt. Uses the chat-completions endpoint with
+   * image output modality (OpenRouter/OpenAI image models return data URLs in
+   * message.images). Returns image data URIs.
+   */
+  async generateImages(prompt: string, model: string, signal?: AbortSignal): Promise<string[]> {
+    const json = await apiJson<any>(this.chatUrl(model), {
+      method: "POST",
+      headers: this.headers(),
+      body: { model, messages: [{ role: "user", content: prompt }], modalities: ["image", "text"] },
+      providerId: this.config.id,
+      timeoutMs: 120_000,
+      maxRetries: 1,
+      signal,
+    });
+    const msg = json.choices?.[0]?.message ?? {};
+    const urls: string[] = [];
+    for (const im of msg.images ?? []) {
+      const url = im?.image_url?.url ?? im?.url ?? (typeof im === "string" ? im : null);
+      if (url) urls.push(url);
+    }
+    // Some models return an images array at the top level or in content parts.
+    if (!urls.length && Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part?.type === "image_url" && part.image_url?.url) urls.push(part.image_url.url);
+      }
+    }
+    return urls;
   }
 
   async healthCheck(signal?: AbortSignal): Promise<HealthCheckResult> {

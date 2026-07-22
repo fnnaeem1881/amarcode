@@ -71,6 +71,10 @@ export const api = {
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
   renameSession: (id: string, title: string) => j(`/api/sessions/${id}/title`, { method: "POST", body: JSON.stringify({ title }) }),
 
+  // image generation
+  generateImage: (providerId: string, model: string, prompt: string) =>
+    j<{ images: string[] }>("/api/image/generate", { method: "POST", body: JSON.stringify({ providerId, model, prompt }) }),
+
   // preview / dev server
   previewStatus: (root: string) => j<{ running: boolean; url: string | null; command: string | null; logs: string; exited: boolean; exitCode: number | null }>(`/api/preview/status?root=${encodeURIComponent(root)}`),
   previewStart: (root: string, command: string) => j<{ running: boolean; url: string | null; logs: string }>("/api/preview/start", { method: "POST", body: JSON.stringify({ root, command }) }),
