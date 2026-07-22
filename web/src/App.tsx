@@ -8,6 +8,7 @@ import { BottomPanel } from "./components/BottomPanel.js";
 import { Chat } from "./components/Chat.js";
 import { WebPreview } from "./components/WebPreview.js";
 import { ImageGen } from "./components/ImageGen.js";
+import { IDE } from "./components/IDE.js";
 import { Settings } from "./components/Settings.js";
 
 interface FileRow { path: string; language: string; size: number; symbols: number; importance: number }
@@ -37,6 +38,7 @@ export function App() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showImageGen, setShowImageGen] = useState(false);
+  const [showIDE, setShowIDE] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("theme") as "dark" | "light") || "dark");
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => localStorage.getItem("sidebarCollapsed") === "1");
@@ -184,7 +186,6 @@ export function App() {
 
   async function openFile(path: string) {
     setActivePath(path);
-    setShowDrawer(true);     // show the file in the bottom drawer (not full-screen)
     setContent("Loading…");
     try { setContent((await api.file(root, path)).content); }
     catch (e) { setContent(`// Failed to open ${path}: ${e instanceof Error ? e.message : e}`); }
@@ -216,6 +217,7 @@ export function App() {
         onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession} onRenameSession={renameSession} onDeleteSessions={deleteSessions}
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
         onOpenProject={() => setShowPicker(true)} onSettings={() => setShowSettings(true)}
+        onIDE={() => { setShowIDE(true); setShowImageGen(false); setShowPreview(false); }}
       />
 
       <div className="cc-main">
@@ -229,17 +231,14 @@ export function App() {
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { setShowImageGen((v) => !v); setShowPreview(false); }}>🎨 Image</button>
-          <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => { setShowPreview((v) => !v); setShowImageGen(false); }}>🌐 Preview</button>
+          <button className={`cc-icon ${showIDE ? "on" : ""}`} title="IDE — browse & edit files" onClick={() => { setShowIDE((v) => !v); setShowImageGen(false); setShowPreview(false); }}>⌨ IDE</button>
+          <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { setShowImageGen((v) => !v); setShowPreview(false); setShowIDE(false); }}>🎨 Image</button>
+          <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => { setShowPreview((v) => !v); setShowImageGen(false); setShowIDE(false); }}>🌐 Preview</button>
           <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
         </div>
 
         <div className="cc-body">
-          {showImageGen ? (
-            <ImageGen providers={providers} />
-          ) : showPreview ? (
-            <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
-          ) : socketRef.current ? (
+          {socketRef.current ? (
             <Chat
               root={root}
               session={session}
@@ -268,6 +267,12 @@ export function App() {
               onGit={() => setGitRefreshKey((k) => k + 1)}
               onPreview={(url) => { setPreviewUrl(url); setShowPreview(true); }}
               previewUrl={previewUrl}
+              contentOverride={
+                showIDE ? <IDE root={root} files={files} activePath={activePath} content={content} onOpenFile={openFile} onSaved={() => setGitRefreshKey((k) => k + 1)} />
+                : showImageGen ? <ImageGen providers={providers} />
+                : showPreview ? <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
+                : undefined
+              }
             />
           ) : (
             <div className="cc-connecting hint">Connecting to engine…</div>

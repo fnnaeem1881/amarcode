@@ -102,6 +102,18 @@ api.get("/project/files", (req, res) => {
   })));
 });
 
+api.post("/project/file/save", (req, res) => {
+  const { root: r, path: rel, content } = req.body as { root: string; path: string; content: string };
+  try {
+    const abs = resolveInRoot(r, rel);
+    fs.writeFileSync(abs, content ?? "", "utf8");
+    indexer.reindexFile(r, abs);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : String(e) });
+  }
+});
+
 api.get("/project/file", (req, res) => {
   const root = String(req.query.root ?? "");
   const rel = String(req.query.path ?? "");

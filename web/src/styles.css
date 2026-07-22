@@ -231,6 +231,25 @@ button.cc-chip:hover { border-color: var(--accent); color: var(--text); }
 .webview-empty code { background: var(--bg-panel); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); }
 .cc-icon.on { color: var(--green); border-color: var(--green); }
 
+/* sidebar action row (IDE / project) */
+.sb-actions { display: flex; gap: 6px; margin: 0 12px 10px; }
+.sb-act { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; font-size: 12px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-act:hover { border-color: var(--accent); }
+
+/* IDE (editable file editor) */
+.cc-override { flex: 1; display: flex; overflow: hidden; }
+.ide { flex: 1; display: grid; grid-template-columns: 240px 1fr; overflow: hidden; }
+.ide-tree { border-right: 1px solid var(--border); overflow: auto; background: var(--bg-alt); }
+.ide-tree-head { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); padding: 8px 12px; }
+.ide-editor { display: flex; flex-direction: column; overflow: hidden; }
+.ide-tab { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: var(--bg-alt); border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; }
+.ide-path { color: var(--text); }
+.ide-msg { color: var(--green); font-size: 11px; }
+.ide-code { flex: 1; display: flex; overflow: auto; background: var(--bg); }
+.ide-gutter { margin: 0; padding: 10px 8px 10px 14px; text-align: right; color: var(--text-dim); font-family: var(--mono); font-size: 12.5px; line-height: 1.5; user-select: none; }
+.ide-text { flex: 1; border: none; outline: none; resize: none; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 12.5px; line-height: 1.5; padding: 10px 14px; white-space: pre; tab-size: 2; }
+.ide-empty { display: flex; align-items: center; justify-content: center; flex: 1; }
+
 /* image generation */
 .imgen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .imgen-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }

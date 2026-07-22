@@ -14,7 +14,7 @@ type Item =
 
 export function Chat({
   root, session, sessions, onSelectSession, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
-  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl,
+  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl, contentOverride,
 }: {
   root: string;
   session: ChatSession | null;
@@ -33,6 +33,7 @@ export function Chat({
   onGit: (text: string) => void;
   onPreview: (url: string) => void;
   previewUrl: string;
+  contentOverride?: React.ReactNode;
 }) {
   const sessionId = session?.id ?? null;
   const [items, setItems] = useState<Item[]>([]);
@@ -210,47 +211,7 @@ export function Chat({
   };
   const projOf = (r: string) => r.split(/[\\/]/).filter(Boolean).pop() ?? r;
 
-  return (
-    <div className={`cc-chat ${hero ? "dash" : ""}`}>
-      {hero ? (
-        <div className="cc-dash">
-          <div className="cc-dash-head">
-            <div className="cc-dash-title"><span className="star">✳</span> Welcome back{userName ? `, ${userName}` : ""}</div>
-          </div>
-          <div className="cc-dash-section">Sessions</div>
-          <div className="cc-dash-list">
-            {sessions.slice(0, 10).map((s) => (
-              <div key={s.id} className={`cc-scard ${session?.id === s.id ? "active" : ""}`} onClick={() => onSelectSession(s)}>
-                <span className="cc-scard-dot" />
-                <span className="cc-scard-title">{s.title}</span>
-                <span className="cc-scard-proj">{projOf(s.projectRoot)}</span>
-                <span className="cc-scard-when">{fmtWhen(s.updatedAt)}</span>
-                <span className="cc-scard-arrow">›</span>
-              </div>
-            ))}
-            {!sessions.length && <div className="hint" style={{ padding: 12 }}>No sessions yet — describe a task below to start.</div>}
-          </div>
-        </div>
-      ) : null}
-      <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto", display: "none" } : undefined}>
-        <div className="cc-col">
-          {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
-
-          {busy && (
-            <div className="cc-working">
-              <span className="cc-working-dot" />
-              <span className="cc-working-text">Working{iteration ? ` · step ${iteration}` : ""} · {step || "…"}</span>
-              <span className="cc-working-time">{fmtTime(elapsed)}</span>
-              {tokens > 0 && <span className="cc-working-tokens">{fmtTokens(tokens)} tokens</span>}
-              {bypass && <span className="cc-working-bypass">bypass on</span>}
-            </div>
-          )}
-          {!busy && tokens > 0 && items.length > 0 && (
-            <div className="cc-turnstat">✓ {fmtTime(elapsed)} · {fmtTokens(tokens)} tokens</div>
-          )}
-        </div>
-      </div>
-
+  const renderComposer = () => (
       <div className="cc-composer-wrap">
         <div className="cc-ctxchips">
           <button className="cc-chip" onClick={onOpenProject} title="Change project">📁 {projectName || "Local"}</button>
@@ -345,6 +306,59 @@ export function Chat({
           </div>
         </div>
       </div>
+  );
+
+  if (contentOverride) {
+    return (
+      <div className="cc-chat">
+        <div className="cc-override">{contentOverride}</div>
+        {renderComposer()}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`cc-chat ${hero ? "dash" : ""}`}>
+      {hero ? (
+        <div className="cc-dash">
+          <div className="cc-dash-head">
+            <div className="cc-dash-title"><span className="star">✳</span> Welcome back{userName ? `, ${userName}` : ""}</div>
+          </div>
+          <div className="cc-dash-section">Sessions</div>
+          <div className="cc-dash-list">
+            {sessions.slice(0, 10).map((s) => (
+              <div key={s.id} className={`cc-scard ${session?.id === s.id ? "active" : ""}`} onClick={() => onSelectSession(s)}>
+                <span className="cc-scard-dot" />
+                <span className="cc-scard-title">{s.title}</span>
+                <span className="cc-scard-proj">{projOf(s.projectRoot)}</span>
+                <span className="cc-scard-when">{fmtWhen(s.updatedAt)}</span>
+                <span className="cc-scard-arrow">›</span>
+              </div>
+            ))}
+            {!sessions.length && <div className="hint" style={{ padding: 12 }}>No sessions yet — describe a task below to start.</div>}
+          </div>
+        </div>
+      ) : null}
+      <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto", display: "none" } : undefined}>
+        <div className="cc-col">
+          {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
+
+          {busy && (
+            <div className="cc-working">
+              <span className="cc-working-dot" />
+              <span className="cc-working-text">Working{iteration ? ` · step ${iteration}` : ""} · {step || "…"}</span>
+              <span className="cc-working-time">{fmtTime(elapsed)}</span>
+              {tokens > 0 && <span className="cc-working-tokens">{fmtTokens(tokens)} tokens</span>}
+              {bypass && <span className="cc-working-bypass">bypass on</span>}
+            </div>
+          )}
+          {!busy && tokens > 0 && items.length > 0 && (
+            <div className="cc-turnstat">✓ {fmtTime(elapsed)} · {fmtTokens(tokens)} tokens</div>
+          )}
+        </div>
+      </div>
+
+      {renderComposer()}
     </div>
   );
 }

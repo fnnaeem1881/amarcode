@@ -56,6 +56,7 @@ export const api = {
   embed: (root: string) => j<{ ok: boolean }>("/api/project/embed", { method: "POST", body: JSON.stringify({ root }) }),
   files: (root: string) => j<{ path: string; language: string; size: number; symbols: number; importance: number }[]>(`/api/project/files?root=${encodeURIComponent(root)}`),
   file: (root: string, path: string) => j<{ path: string; content: string }>(`/api/project/file?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`),
+  saveFile: (root: string, path: string, content: string) => j("/api/project/file/save", { method: "POST", body: JSON.stringify({ root, path, content }) }),
   metadata: (root: string) => j<ProjectMetadata>(`/api/project/metadata?root=${encodeURIComponent(root)}`),
 
   // fs browse

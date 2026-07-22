@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import type { ProjectMetadata, ChatSession } from "@amarcode/shared";
-import { FileTree } from "./FileTree.js";
 
 interface FileRow { path: string; language: string; size: number; symbols: number; importance: number }
 
 /** Left rail — mirrors the Claude Code desktop: Home (sessions) / Code (files). */
 export function Sidebar({
   tab, setTab, projectName, sessions, activeSessionId, onSelectSession, onNewSession, onDeleteSession, onRenameSession, onDeleteSessions,
-  metadata, files, onOpenFile, onOpenProject, onSettings, activePath,
+  metadata, files, onOpenFile, onOpenProject, onSettings, onIDE, activePath,
 }: {
   tab: "home" | "code";
   setTab: (t: "home" | "code") => void;
@@ -24,6 +23,7 @@ export function Sidebar({
   onOpenFile: (path: string) => void;
   onOpenProject: () => void;
   onSettings: () => void;
+  onIDE: () => void;
   activePath: string | null;
 }) {
   const projOf = (root: string) => root.split(/[\\/]/).filter(Boolean).pop() ?? root;
@@ -89,12 +89,12 @@ export function Sidebar({
 
       <button className="sb-new" onClick={onNewSession}>+ New session</button>
 
-      <button className="sb-project" onClick={onOpenProject} title="Open a project folder">
-        📂 <span>{projectName || "Open project"}</span>
-      </button>
+      <div className="sb-actions">
+        <button className="sb-act" onClick={onIDE} title="Open the file editor (IDE)">⌨ IDE</button>
+        <button className="sb-act" onClick={onOpenProject} title="Open a project folder">📂 {projectName || "Project"}</button>
+      </div>
 
-      {tab === "home" ? (
-        <div className="sb-scroll">
+      <div className="sb-scroll">
           {selected.size > 0 ? (
             <div className="sb-selbar">
               <span>{selected.size} selected</span>
@@ -124,20 +124,7 @@ export function Sidebar({
                 onClick={(e) => { e.stopPropagation(); setMenu({ s, x: e.clientX, y: e.clientY }); }}>⋯</button>
             </div>
           ))}
-        </div>
-      ) : (
-        <div className="sb-scroll">
-          {metadata && (
-            <div className="sb-meta">
-              <span className="badge">{metadata.framework}</span>
-              <span className="badge">{metadata.language}</span>
-              {metadata.database && <span className="badge">{metadata.database}</span>}
-            </div>
-          )}
-          <div className="sb-section">Explorer ({files.length})</div>
-          <FileTree files={files} activePath={activePath} onOpen={onOpenFile} />
-        </div>
-      )}
+      </div>
 
       <button className="sb-settings" onClick={onSettings}>⚙ AI Settings</button>
 
