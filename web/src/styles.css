@@ -128,15 +128,30 @@ input, select, textarea { font-family: inherit; }
 .cc-empty { text-align: center; padding: 60px 0; }
 .cc-empty-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
 
-/* Home hero (clean centered welcome, Claude-desktop style) */
-.cc-chat.hero { justify-content: center; }
-.cc-chat.hero .cc-log { overflow: visible; padding: 0; }
-.cc-hero { text-align: center; padding: 0 24px 22px; }
-.cc-hero-greeting { font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; color: #d9c9b8; margin-bottom: 12px; }
-.cc-hero-greeting .star { color: #d97757; margin-right: 6px; }
-.cc-chat.hero .cc-hero + .cc-log { display: none; }
-.cc-chat.hero .cc-composer-wrap { padding-top: 0; }
-:root[data-theme="light"] .cc-hero-greeting { color: #3a3226; }
+/* Home dashboard (Claude-desktop style: welcome + session cards) */
+.cc-chat.dash { justify-content: flex-start; }
+.cc-dash { flex: 1; overflow: auto; padding: 40px 0 8px; }
+.cc-dash-head { max-width: 900px; margin: 0 auto 26px; padding: 0 28px; }
+.cc-dash-title { font-family: Georgia, "Times New Roman", serif; font-size: 30px; font-weight: 400; color: var(--text); }
+.cc-dash-title .star { color: #d97757; margin-right: 8px; }
+.cc-dash-section { max-width: 900px; margin: 0 auto; padding: 0 28px 8px; font-size: 13px; color: var(--text-dim); }
+.cc-dash-list { max-width: 900px; margin: 0 auto; padding: 0 28px; display: flex; flex-direction: column; gap: 2px; }
+.cc-scard { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; cursor: pointer; }
+.cc-scard:hover { background: var(--bg-alt); }
+.cc-scard.active { background: var(--bg-alt); }
+.cc-scard-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
+.cc-scard.active .cc-scard-dot { background: var(--green); }
+.cc-scard-title { font-weight: 600; white-space: nowrap; }
+.cc-scard-proj { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.cc-scard-when { color: var(--text-dim); font-size: 12px; flex-shrink: 0; }
+.cc-scard-arrow { color: var(--text-dim); flex-shrink: 0; }
+
+/* composer context chips */
+.cc-ctxchips { max-width: 780px; margin: 0 auto; width: calc(100% - 56px); display: flex; gap: 6px; padding: 0 0 6px; flex-wrap: wrap; }
+.cc-chip { display: inline-flex; align-items: center; gap: 5px; background: var(--bg-alt); border: 1px solid var(--border); color: var(--text-dim); border-radius: 8px; padding: 3px 9px; font-size: 11px; }
+.cc-chip .ic { color: var(--text); }
+.cc-chip .add { color: var(--green); } .cc-chip .del { color: var(--red); }
+button.cc-chip:hover { border-color: var(--accent); color: var(--text); }
 
 /* working indicator (Claude-Code-style) */
 .cc-working { display: flex; align-items: center; gap: 10px; padding: 10px 4px; color: var(--text-dim); font-size: 13px; }

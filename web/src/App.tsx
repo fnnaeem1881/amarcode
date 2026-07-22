@@ -247,6 +247,8 @@ export function App() {
             <Chat
               root={root}
               session={session}
+              sessions={allSessions}
+              onSelectSession={selectSession}
               socket={socketRef.current}
               providers={providers}
               projectName={projectName}

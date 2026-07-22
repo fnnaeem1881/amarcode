@@ -13,11 +13,13 @@ type Item =
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
 
 export function Chat({
-  root, session, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
+  root, session, sessions, onSelectSession, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
   onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl,
 }: {
   root: string;
   session: ChatSession | null;
+  sessions: ChatSession[];
+  onSelectSession: (s: ChatSession) => void;
   socket: AgentSocket;
   providers: SafeProviderConfig[];
   projectName: string;
@@ -202,16 +204,35 @@ export function Chat({
 
   const hero = items.length === 0 && !busy;
   const userName = localStorage.getItem("userName") || "";
+  const fmtWhen = (iso: string) => {
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    return s < 60 ? "now" : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
+  };
+  const projOf = (r: string) => r.split(/[\\/]/).filter(Boolean).pop() ?? r;
 
   return (
-    <div className={`cc-chat ${hero ? "hero" : ""}`}>
-      {hero && (
-        <div className="cc-hero">
-          <div className="cc-hero-greeting"><span className="star">✳</span> What should we build{userName ? `, ${userName}` : ""}?</div>
-          <div className="hint">Ask a question, or describe a change — “Add JWT authentication”, “Fix the login bug”, “Convert to Docker”.</div>
+    <div className={`cc-chat ${hero ? "dash" : ""}`}>
+      {hero ? (
+        <div className="cc-dash">
+          <div className="cc-dash-head">
+            <div className="cc-dash-title"><span className="star">✳</span> Welcome back{userName ? `, ${userName}` : ""}</div>
+          </div>
+          <div className="cc-dash-section">Sessions</div>
+          <div className="cc-dash-list">
+            {sessions.slice(0, 10).map((s) => (
+              <div key={s.id} className={`cc-scard ${session?.id === s.id ? "active" : ""}`} onClick={() => onSelectSession(s)}>
+                <span className="cc-scard-dot" />
+                <span className="cc-scard-title">{s.title}</span>
+                <span className="cc-scard-proj">{projOf(s.projectRoot)}</span>
+                <span className="cc-scard-when">{fmtWhen(s.updatedAt)}</span>
+                <span className="cc-scard-arrow">›</span>
+              </div>
+            ))}
+            {!sessions.length && <div className="hint" style={{ padding: 12 }}>No sessions yet — describe a task below to start.</div>}
+          </div>
         </div>
-      )}
-      <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto" } : undefined}>
+      ) : null}
+      <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto", display: "none" } : undefined}>
         <div className="cc-col">
           {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
 
@@ -231,6 +252,11 @@ export function Chat({
       </div>
 
       <div className="cc-composer-wrap">
+        <div className="cc-ctxchips">
+          <button className="cc-chip" onClick={onOpenProject} title="Change project">📁 {projectName || "Local"}</button>
+          {git.isRepo && <span className="cc-chip"><span className="ic">⎇</span> {git.branch}</span>}
+          {git.isRepo && (git.add > 0 || git.del > 0) && <span className="cc-chip"><span className="add">+{git.add}</span> <span className="del">−{git.del}</span></span>}
+        </div>
         <div className="cc-composer">
           {attachments.length > 0 && (
             <div className="cc-attachments">
@@ -252,7 +278,7 @@ export function Chat({
           )}
           <textarea
             value={input}
-            placeholder="Type / for commands, paste or attach an image, or ask the assistant…"
+            placeholder="Describe a task or ask a question…"
             onChange={(e) => setInput(e.target.value)}
             onPaste={onPaste}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
