@@ -146,6 +146,9 @@ input, select, textarea { font-family: inherit; }
 .cc-thumb button { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border: none; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; line-height: 1; padding: 0; }
 .msg-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .msg-imgs img { max-width: 220px; max-height: 220px; border-radius: 6px; border: 1px solid var(--border); }
+.cc-imgwarn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 12px 0; padding: 6px 10px; background: rgba(220,220,170,.1); border: 1px solid var(--yellow); border-radius: 8px; font-size: 12px; color: var(--text); }
+.cc-imgwarn button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; }
+.cc-imgwarn button:hover { background: var(--accent-hover); }
 
 /* bypass toggle */
 .cc-bypass { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 14px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }

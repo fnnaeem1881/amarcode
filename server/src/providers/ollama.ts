@@ -115,7 +115,10 @@ export class OllamaProvider implements AIProvider {
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const json = await apiJson<any>(`${this.base()}/api/tags`, { providerId: this.config.id, signal });
-    return (json.models ?? []).map((m: any) => ({ id: m.name, providerId: this.config.id, label: m.name }));
+    return (json.models ?? []).map((m: any) => ({
+      id: m.name, providerId: this.config.id, label: m.name,
+      vision: /llava|bakllava|vision|moondream|minicpm-v|-vl|llama3\.2-vision|granite3\.2-vision/i.test(m.name ?? ""),
+    }));
   }
 
   countTokens(text: string): number { return estimateTokens(text); }

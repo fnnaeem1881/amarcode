@@ -140,11 +140,11 @@ export class AnthropicProvider implements AIProvider {
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     try {
       const json = await apiJson<any>(`${this.base()}/models`, { headers: this.headers(), providerId: this.config.id, signal });
-      return (json.data ?? []).map((m: any) => ({ id: m.id, providerId: this.config.id, label: m.display_name ?? m.id }));
+      return (json.data ?? []).map((m: any) => ({ id: m.id, providerId: this.config.id, label: m.display_name ?? m.id, vision: true }));
     } catch {
       // Fall back to a static list if the models endpoint is unavailable.
       return ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5-20251001"].map((id) => ({
-        id, providerId: this.config.id, label: id,
+        id, providerId: this.config.id, label: id, vision: true,
       }));
     }
   }

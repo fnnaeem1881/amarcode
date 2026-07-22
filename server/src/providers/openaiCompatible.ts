@@ -207,12 +207,16 @@ export class OpenAICompatibleProvider implements AIProvider {
       signal,
     });
     const items = json.data ?? json.models ?? [];
-    return items.map((m: any) => ({
-      id: m.id ?? m.name,
-      providerId: this.config.id,
-      label: m.id ?? m.name,
-      contextWindow: m.context_length ?? m.context_window,
-    }));
+    return items.map((m: any) => {
+      const id = m.id ?? m.name;
+      const modalities = m.architecture?.input_modalities ?? m.architecture?.modality;
+      const vision = Array.isArray(modalities)
+        ? modalities.includes("image")
+        : typeof modalities === "string"
+          ? /image/.test(modalities)
+          : visionHeuristic(id);
+      return { id, providerId: this.config.id, label: id, contextWindow: m.context_length ?? m.context_window, vision };
+    });
   }
 
   countTokens(text: string): number {
@@ -228,6 +232,11 @@ export class OpenAICompatibleProvider implements AIProvider {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
+}
+
+/** Fallback vision detection from a model id when metadata is unavailable. */
+function visionHeuristic(id: string): boolean {
+  return /gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-4-vision|o[134]\b|claude-3|claude-(?:sonnet|opus|haiku)|gemini|llava|vision|-vl\b|pixtral|qwen.*vl|internvl|molmo|phi-3\.5-vision|phi-4|llama-3\.2-(?:11|90)b/i.test(id);
 }
 
 function toOpenAIMessage(m: ChatMessageInput): Record<string, unknown> {

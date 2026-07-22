@@ -65,6 +65,8 @@ export interface ModelInfo {
   contextWindow?: number;
   maxOutputTokens?: number;
   supportsTools?: boolean;
+  /** Model accepts image input (vision). */
+  vision?: boolean;
   /** USD per 1M tokens. */
   inputPrice?: number;
   outputPrice?: number;

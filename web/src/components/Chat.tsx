@@ -45,6 +45,7 @@ export function Chat({
   const [providerSel, setProviderSel] = useState<string>("");
   const [modelSel, setModelSel] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
+  const [visionSet, setVisionSet] = useState<Set<string>>(new Set());
   const [activeLabel, setActiveLabel] = useState<string>("default");
   const [menuOpen, setMenuOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]); // image data URIs
@@ -96,11 +97,18 @@ export function Chat({
 
   const loadModels = async (providerId: string, keep?: string) => {
     try {
-      const ms = (await api.listModels(providerId)).map((m) => m.id);
-      setModels(ms);
-      if (keep && !ms.includes(keep)) setModels([keep, ...ms]);
+      const list = await api.listModels(providerId);
+      const ms = list.map((m) => m.id);
+      setModels(keep && !ms.includes(keep) ? [keep, ...ms] : ms);
+      setVisionSet(new Set(list.filter((m) => m.vision).map((m) => m.id)));
     } catch { setModels(keep ? [keep] : []); }
   };
+
+  // Effective model + whether it can read images.
+  const effectiveModel = modelSel || activeLabel;
+  const modelHasVision = (id: string) => visionSet.has(id) || looksVision(id);
+  const imageWarn = attachments.length > 0 && effectiveModel && effectiveModel !== "default" && !modelHasVision(effectiveModel);
+  const firstVisionModel = models.find((m) => modelHasVision(m));
 
   // The model override sent with each chat (empty → server default routing).
   const override = providerSel && modelSel ? `${providerSel}::${modelSel}` : "";
@@ -231,6 +239,14 @@ export function Chat({
               ))}
             </div>
           )}
+          {imageWarn && (
+            <div className="cc-imgwarn">
+              ⚠️ <b>{effectiveModel}</b> can't read images.
+              {firstVisionModel
+                ? <button onClick={() => setModelSel(firstVisionModel!)}>Switch to {firstVisionModel} 👁</button>
+                : <span> Pick a vision model (e.g. gpt-4o, claude, gemini) below.</span>}
+            </div>
+          )}
           <textarea
             value={input}
             placeholder="Type / for commands, paste or attach an image, or ask the assistant…"
@@ -279,7 +295,7 @@ export function Chat({
             <select className="model-pick" value={modelSel}
               onChange={(e) => setModelSel(e.target.value)} title="Model" disabled={!providerSel}>
               <option value="">{models.length ? "model…" : "load models"}</option>
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+              {models.map((m) => <option key={m} value={m}>{modelHasVision(m) ? "👁 " : ""}{m}</option>)}
             </select>
 
             <div style={{ flex: 1 }} />
@@ -355,6 +371,11 @@ function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok:
 }
 
 /** Map a tool call to a Claude-Code-style "Verb target" label. */
+/** Heuristic: does a model id look vision-capable? (fallback when metadata absent) */
+function looksVision(id: string): boolean {
+  return /gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-4-vision|o[134]\b|claude-3|claude-(?:sonnet|opus|haiku)|gemini|llava|vision|-vl\b|pixtral|qwen.*vl|internvl|molmo|phi-4|llama-3\.2-(?:11|90)b/i.test(id);
+}
+
 function toolLabel(name: string, args: any): { verb: string; target: string } {
   const base = (p?: string) => (p ? String(p).split(/[\\/]/).pop() ?? String(p) : "");
   switch (name) {

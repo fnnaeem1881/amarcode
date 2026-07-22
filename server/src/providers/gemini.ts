@@ -133,6 +133,7 @@ export class GeminiProvider implements AIProvider {
       label: m.displayName ?? m.name,
       contextWindow: m.inputTokenLimit,
       maxOutputTokens: m.outputTokenLimit,
+      vision: /gemini/i.test(m.name ?? ""), // Gemini 1.5+/2.x are multimodal
     }));
   }
 
