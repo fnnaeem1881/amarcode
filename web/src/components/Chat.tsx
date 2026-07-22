@@ -331,7 +331,7 @@ export function Chat({
       {hero ? (
         <div className="cc-dash">
           <div className="cc-dash-head">
-            <div className="cc-dash-title"><span className="star">✳</span> Welcome back{userName ? `, ${userName}` : ""}</div>
+            <div className="cc-dash-title"><span className="star"></span> Welcome back{userName ? `, ${userName}` : ""}</div>
           </div>
           <div className="cc-dash-section">Sessions</div>
           <div className="cc-dash-list">
