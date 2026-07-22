@@ -6,7 +6,6 @@ import { ProjectPicker } from "./components/ProjectPicker.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { BottomPanel } from "./components/BottomPanel.js";
 import { Chat } from "./components/Chat.js";
-import { CodeView } from "./components/CodeView.js";
 import { WebPreview } from "./components/WebPreview.js";
 import { ImageGen } from "./components/ImageGen.js";
 import { Settings } from "./components/Settings.js";
@@ -185,8 +184,7 @@ export function App() {
 
   async function openFile(path: string) {
     setActivePath(path);
-    setSidebarTab("code");   // switch sidebar to explorer
-    setShowPreview(false);   // leave preview so the code view is visible
+    setShowDrawer(true);     // show the file in the bottom drawer (not full-screen)
     setContent("Loading…");
     try { setContent((await api.file(root, path)).content); }
     catch (e) { setContent(`// Failed to open ${path}: ${e instanceof Error ? e.message : e}`); }
@@ -241,8 +239,6 @@ export function App() {
             <ImageGen providers={providers} />
           ) : showPreview ? (
             <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
-          ) : sidebarTab === "code" ? (
-            <CodeView path={activePath} content={content} projectName={projectName} />
           ) : socketRef.current ? (
             <Chat
               root={root}
