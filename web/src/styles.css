@@ -47,9 +47,9 @@ input, select, textarea { font-family: inherit; }
 .app { display: grid; grid-template-rows: 34px 1fr; height: 100vh; }
 
 /* ===== Claude Code desktop layout ===== */
-.cc-app { display: grid; grid-template-columns: 250px 1fr; height: 100vh; transition: grid-template-columns .15s ease; }
-.cc-app.collapsed { grid-template-columns: 0 1fr; }
-.cc-app.collapsed .sidebar { display: none; }
+.cc-app { display: grid; grid-template-columns: 250px minmax(0, 1fr); height: 100vh; }
+.cc-app.collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+.cc-app.collapsed .sidebar { overflow: hidden; border-right: none; }
 
 /* left sidebar */
 .sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
