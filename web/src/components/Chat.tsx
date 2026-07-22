@@ -200,16 +200,19 @@ export function Chat({
   const fmtTime = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
   const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
 
+  const hero = items.length === 0 && !busy;
+  const userName = localStorage.getItem("userName") || "";
+
   return (
-    <div className="cc-chat">
-      <div className="cc-log" ref={logRef}>
+    <div className={`cc-chat ${hero ? "hero" : ""}`}>
+      {hero && (
+        <div className="cc-hero">
+          <div className="cc-hero-greeting"><span className="star">✳</span> What should we build{userName ? `, ${userName}` : ""}?</div>
+          <div className="hint">Ask a question, or describe a change — “Add JWT authentication”, “Fix the login bug”, “Convert to Docker”.</div>
+        </div>
+      )}
+      <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto" } : undefined}>
         <div className="cc-col">
-          {items.length === 0 && (
-            <div className="cc-empty">
-              <div className="cc-empty-title">What should we build?</div>
-              <div className="hint">Try: “Add JWT authentication” · “Fix the login bug” · “Convert to Docker” · “Refactor UserService”</div>
-            </div>
-          )}
           {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
 
           {busy && (

@@ -40,6 +40,8 @@ export function App() {
   const [showImageGen, setShowImageGen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("theme") as "dark" | "light") || "dark");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => localStorage.getItem("sidebarCollapsed") === "1");
+  useEffect(() => { localStorage.setItem("sidebarCollapsed", sidebarCollapsed ? "1" : "0"); }, [sidebarCollapsed]);
 
   const [terminal, setTerminal] = useState("");
   const [gitRefreshKey, setGitRefreshKey] = useState(0);
@@ -208,7 +210,7 @@ export function App() {
   const projectName = metadata?.name ?? (root ? root.split(/[\\/]/).pop() ?? "" : "");
 
   return (
-    <div className="cc-app">
+    <div className={`cc-app ${sidebarCollapsed ? "collapsed" : ""}`}>
       <Sidebar
         tab={sidebarTab} setTab={setSidebarTab}
         projectName={projectName}
@@ -220,6 +222,7 @@ export function App() {
 
       <div className="cc-main">
         <div className="cc-header">
+          <button className="cc-icon" title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"} onClick={() => setSidebarCollapsed((v) => !v)}>☰</button>
           <span className="cc-title">{session?.title ?? "AI Coding Assistant"}</span>
           {projectName && <span className="cc-badge">{projectName}</span>}
           <span className="hint" style={{ marginLeft: 10 }}>{status}</span>

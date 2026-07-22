@@ -47,7 +47,9 @@ input, select, textarea { font-family: inherit; }
 .app { display: grid; grid-template-rows: 34px 1fr; height: 100vh; }
 
 /* ===== Claude Code desktop layout ===== */
-.cc-app { display: grid; grid-template-columns: 250px 1fr; height: 100vh; }
+.cc-app { display: grid; grid-template-columns: 250px 1fr; height: 100vh; transition: grid-template-columns .15s ease; }
+.cc-app.collapsed { grid-template-columns: 0 1fr; }
+.cc-app.collapsed .sidebar { display: none; }
 
 /* left sidebar */
 .sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
@@ -125,6 +127,16 @@ input, select, textarea { font-family: inherit; }
 .cc-col { max-width: 780px; margin: 0 auto; padding: 0 28px; }
 .cc-empty { text-align: center; padding: 60px 0; }
 .cc-empty-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+
+/* Home hero (clean centered welcome, Claude-desktop style) */
+.cc-chat.hero { justify-content: center; }
+.cc-chat.hero .cc-log { overflow: visible; padding: 0; }
+.cc-hero { text-align: center; padding: 0 24px 22px; }
+.cc-hero-greeting { font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; color: #d9c9b8; margin-bottom: 12px; }
+.cc-hero-greeting .star { color: #d97757; margin-right: 6px; }
+.cc-chat.hero .cc-hero + .cc-log { display: none; }
+.cc-chat.hero .cc-composer-wrap { padding-top: 0; }
+:root[data-theme="light"] .cc-hero-greeting { color: #3a3226; }
 
 /* working indicator (Claude-Code-style) */
 .cc-working { display: flex; align-items: center; gap: 10px; padding: 10px 4px; color: var(--text-dim); font-size: 13px; }
