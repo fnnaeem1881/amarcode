@@ -18,6 +18,7 @@ import { toolRegistry } from "../tools/registry.js";
 import * as gitSvc from "./gitService.js";
 import * as fsBrowse from "./fsBrowse.js";
 import * as devServer from "../tools/devServer.js";
+import * as imageEngines from "../tools/imageEngines.js";
 
 export const api = Router();
 
@@ -246,15 +247,23 @@ api.post("/preview/stop", (req, res) => { devServer.stopServer(root(req)); res.j
 
 /* ------------------------------ Image generation ------------------------- */
 
+// Free image engines (no credit card) + any configured chat provider's image models.
+api.get("/image/engines", (_req, res) => res.json(imageEngines.IMAGE_MODELS));
+
 api.post("/image/generate", async (req, res) => {
-  const { providerId, model, prompt } = req.body as { providerId: string; model: string; prompt: string };
+  const { engine, providerId, model, prompt } = req.body as { engine?: string; providerId?: string; model: string; prompt: string };
   try {
-    const provider: any = createProvider(configStore.getProvider(providerId)!);
-    if (typeof provider.generateImages !== "function") {
-      return res.status(400).json({ error: "This provider does not support image generation." });
+    let images: string[];
+    if (engine) {
+      images = await imageEngines.generateImage(engine as any, model, prompt);
+    } else {
+      const provider: any = createProvider(configStore.getProvider(providerId!)!);
+      if (typeof provider.generateImages !== "function") {
+        return res.status(400).json({ error: "This provider does not support image generation." });
+      }
+      images = await provider.generateImages(prompt, model);
     }
-    const images = await provider.generateImages(prompt, model);
-    if (!images.length) return res.status(502).json({ error: "The model returned no image. Try a dedicated image model (e.g. google/gemini-2.5-flash-image)." });
+    if (!images.length) return res.status(502).json({ error: "The model returned no image. Try another model." });
     res.json({ images });
   } catch (e) {
     res.status(500).json({ error: msg(e) });

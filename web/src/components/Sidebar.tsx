@@ -24,6 +24,7 @@ export function Sidebar({
   onOpenProject: () => void;
   onSettings: () => void;
   onIDE: () => void;
+  onImage: () => void;
   activePath: string | null;
 }) {
   const projOf = (root: string) => root.split(/[\\/]/).filter(Boolean).pop() ?? root;

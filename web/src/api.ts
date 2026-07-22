@@ -75,6 +75,9 @@ export const api = {
   // image generation
   generateImage: (providerId: string, model: string, prompt: string) =>
     j<{ images: string[] }>("/api/image/generate", { method: "POST", body: JSON.stringify({ providerId, model, prompt }) }),
+  imageEngines: () => j<{ engine: string; id: string; label: string; needsKey?: string; local?: boolean }[]>("/api/image/engines"),
+  generateImageFree: (engine: string, model: string, prompt: string) =>
+    j<{ images: string[] }>("/api/image/generate", { method: "POST", body: JSON.stringify({ engine, model, prompt }) }),
 
   // preview / dev server
   previewStatus: (root: string) => j<{ running: boolean; url: string | null; command: string | null; logs: string; exited: boolean; exitCode: number | null }>(`/api/preview/status?root=${encodeURIComponent(root)}`),
