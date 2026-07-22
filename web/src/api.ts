@@ -70,6 +70,8 @@ export const api = {
   createSession: (root: string, title?: string, kind?: "home" | "code") => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title, kind }) }),
   deleteSession: (id: string) => j(`/api/sessions/${id}`, { method: "DELETE" }),
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
+  addMessage: (id: string, msg: { role: "user" | "assistant"; content: string; images?: string[] }) =>
+    j<StoredMessage>(`/api/sessions/${id}/messages`, { method: "POST", body: JSON.stringify(msg) }),
   renameSession: (id: string, title: string) => j(`/api/sessions/${id}/title`, { method: "POST", body: JSON.stringify({ title }) }),
 
   // image generation

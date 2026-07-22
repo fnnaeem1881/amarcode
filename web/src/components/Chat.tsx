@@ -92,7 +92,12 @@ export function Chat({
     api.messages(sessionId).then((msgs) => {
       setItems(msgs
         .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({ kind: m.role as "user" | "assistant", text: m.content })));
+        .map((m): Item => {
+          // A stored message carrying images is a generated-image turn.
+          if (m.role === "assistant" && m.images?.length) return { kind: "images", images: m.images };
+          if (m.role === "user") return { kind: "user", text: m.content, images: m.images };
+          return { kind: "assistant", text: m.content };
+        }));
     }).catch(() => setItems([]));
   }, [sessionId]);
 
@@ -164,9 +169,13 @@ export function Chat({
     push({ kind: "user", text: p });
     setInput("");
     setBusy(true); setStep("generating image…"); setElapsed(0);
+    // Persist the prompt now so the turn survives even if generation fails or
+    // the user navigates away mid-render.
+    if (sessionId) api.addMessage(sessionId, { role: "user", content: p }).catch(() => {});
     try {
       const r = await api.generateImageFree(engine, model, p);
       push({ kind: "images", images: r.images });
+      if (sessionId) api.addMessage(sessionId, { role: "assistant", content: "", images: r.images }).catch(() => {});
     } catch (e) {
       push({ kind: "assistant", text: `⚠️ ${e instanceof Error ? e.message : e}` });
     } finally { setBusy(false); setStep(""); }

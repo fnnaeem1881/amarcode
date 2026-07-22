@@ -370,7 +370,7 @@ button.cc-chip:hover { border-color: var(--accent); color: var(--text); }
 
 /* approval */
 .approval { border: 1px solid var(--yellow); background: #2a2410; border-radius: 6px; padding: 10px; margin: 8px 0; }
-.approval.dangerous { border-color: var(--red); background: #2a1010; }
+.approval.dangerous { border-color: var(--red); background: #ffffff; }
 .approval .actions { display: flex; gap: 8px; margin-top: 8px; }
 
 /* plan */
