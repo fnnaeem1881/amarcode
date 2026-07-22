@@ -34,6 +34,7 @@ export function App() {
   const [sidebarTab, setSidebarTab] = useState<"home" | "code">("home");
 
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerForNew, setPickerForNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -122,16 +123,19 @@ export function App() {
   }
 
   // Return to the chat view (used whenever a session/project action happens).
-  function showChat() { setSidebarTab("home"); setShowPreview(false); }
+  function showChat() { setShowPreview(false); setShowImageGen(false); setShowIDE(false); }
 
   // Open a project from the picker: switch root and select/create its session.
   async function openProjectFromPicker(dir: string) {
     showChat();
     setSidebarTab("code");
     setRoot(dir);
+    const forceNew = pickerForNew;
+    setPickerForNew(false);
     const list = (await api.sessions(dir).catch(() => [])).filter((s) => (s.kind ?? "code") === "code");
-    if (list.length) setSession(list[0]);
-    else {
+    if (list.length && !forceNew) {
+      setSession(list[0]);
+    } else {
       const s = await api.createSession(dir, "New chat", "code");
       setAllSessions((xs) => [s, ...xs]);
       setSession(s);
@@ -150,15 +154,23 @@ export function App() {
 
   async function newSession() {
     showChat();
-    setShowImageGen(false); setShowIDE(false);
-    const kind = sidebarTab; // Home creates a home (chat) session; Code a code session.
-    // Don't pile up empty "New chat" sessions of the same kind.
-    if (session && (session.kind ?? "code") === kind && session.title === "New chat") {
+    const kind = sidebarTab; // stay in the CURRENT tab
+    if (kind === "code") {
+      // A new coding session starts fresh — clear the old project and pick a new one.
+      setRoot("");
+      setMetadata(null);
+      setFiles([]);
+      setSession(null);
+      setPickerForNew(true);
+      setShowPicker(true);
+      return;
+    }
+    // Home: create a blank chat session, reusing an existing empty one.
+    if (session && (session.kind ?? "code") === "home" && session.title === "New chat") {
       const msgs = await api.messages(session.id).catch(() => []);
       if (msgs.length === 0) return;
     }
-    if (kind === "code" && !root) { setShowPicker(true); return; }
-    const s = await api.createSession(kind === "home" ? "" : root, "New chat", kind);
+    const s = await api.createSession("", "New chat", "home");
     setAllSessions((xs) => [s, ...xs]);
     setSession(s);
   }
@@ -242,7 +254,7 @@ export function App() {
         sessions={visibleSessions} activeSessionId={session?.id ?? null}
         onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession} onRenameSession={renameSession} onDeleteSessions={deleteSessions}
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
-        onOpenProject={() => setShowPicker(true)} onSettings={() => setShowSettings(true)}
+        onOpenProject={() => { setPickerForNew(false); setShowPicker(true); }} onSettings={() => setShowSettings(true)}
         onIDE={() => { setShowIDE(true); setShowImageGen(false); setShowPreview(false); }}
       />
 
@@ -279,7 +291,7 @@ export function App() {
               git={gitInfo}
               onCommit={commit}
               onOpenPanel={() => setShowDrawer(true)}
-              onOpenProject={() => setShowPicker(true)}
+              onOpenProject={() => { setPickerForNew(false); setShowPicker(true); }}
               onTitle={(title) => {
                 if (!session) return;
                 setAllSessions((xs) => xs.map((s) => (s.id === session.id ? { ...s, title } : s)));
