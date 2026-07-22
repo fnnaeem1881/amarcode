@@ -38,7 +38,7 @@ export function attachWebSocket(server: Server): void {
       }
       if (msg.type !== "chat") return;
 
-      const { sessionId, root, task, override, previewUrl, lite, images } = msg;
+      const { sessionId, root, task, override, previewUrl, lite, images, mode } = msg;
       abort = new AbortController();
 
       // Let the agent's http_request target the URL the user is running/previewing.
@@ -50,7 +50,8 @@ export function attachWebSocket(server: Server): void {
 
       try {
         const finalText = await runAgent({
-          root, task, history, override, lite: !!lite, images: Array.isArray(images) ? images : undefined, signal: abort.signal,
+          root, task, history, override, lite: !!lite, chatOnly: mode === "home",
+          images: Array.isArray(images) ? images : undefined, signal: abort.signal,
           emit: (e) => send(e),
           requestApproval: (action, risk, detail) =>
             new Promise<boolean>((resolve) => {

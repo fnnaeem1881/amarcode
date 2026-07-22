@@ -13,12 +13,13 @@ type Item =
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
 
 export function Chat({
-  root, session, sessions, onSelectSession, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
+  root, session, sessions, mode, onSelectSession, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
   onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl, contentOverride,
 }: {
   root: string;
   session: ChatSession | null;
   sessions: ChatSession[];
+  mode: "home" | "code";
   onSelectSession: (s: ChatSession) => void;
   socket: AgentSocket;
   providers: SafeProviderConfig[];
@@ -154,7 +155,7 @@ export function Chat({
 
     const [providerId, model] = override.split("::");
     socket.chat(
-      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined, lite, images: images.length ? images : undefined },
+      { sessionId: sessionId ?? undefined, root, task, override: providerId && model ? { providerId, model } : undefined, previewUrl: previewUrl || undefined, lite, images: images.length ? images : undefined, mode },
       {
         onText: (d) => { setStep("writing…"); appendAssistant(d); },
         onIteration: (n) => { setIteration(n); setStep("thinking…"); },
@@ -213,11 +214,13 @@ export function Chat({
 
   const renderComposer = () => (
       <div className="cc-composer-wrap">
-        <div className="cc-ctxchips">
-          <button className="cc-chip" onClick={onOpenProject} title="Change project">📁 {projectName || "Local"}</button>
-          {git.isRepo && <span className="cc-chip"><span className="ic">⎇</span> {git.branch}</span>}
-          {git.isRepo && (git.add > 0 || git.del > 0) && <span className="cc-chip"><span className="add">+{git.add}</span> <span className="del">−{git.del}</span></span>}
-        </div>
+        {mode === "code" && (
+          <div className="cc-ctxchips">
+            <button className="cc-chip" onClick={onOpenProject} title="Change project">📁 {projectName || "Local"}</button>
+            {git.isRepo && <span className="cc-chip"><span className="ic">⎇</span> {git.branch}</span>}
+            {git.isRepo && (git.add > 0 || git.del > 0) && <span className="cc-chip"><span className="add">+{git.add}</span> <span className="del">−{git.del}</span></span>}
+          </div>
+        )}
         <div className="cc-composer">
           {attachments.length > 0 && (
             <div className="cc-attachments">
@@ -253,29 +256,33 @@ export function Chat({
               {menuOpen && (
                 <div className="cc-menu" onMouseLeave={() => setMenuOpen(false)}>
                   <button onClick={() => { fileInputRef.current?.click(); setMenuOpen(false); }}>🖼 Add image / photo</button>
-                  <button onClick={() => { onOpenProject(); setMenuOpen(false); }}>📁 Add folder</button>
-                  <button onClick={() => { onOpenPanel(); setMenuOpen(false); }}>🗂 Open panel (files/terminal/git)</button>
-                  <button onClick={() => insertSlash("/plan ")}>⌗ Slash: /plan</button>
-                  <button onClick={() => insertSlash("/test")}>⌗ Slash: /test</button>
-                  <button onClick={() => insertSlash("/commit")}>⌗ Slash: /commit</button>
+                  {mode === "code" && <>
+                    <button onClick={() => { onOpenProject(); setMenuOpen(false); }}>📁 Add folder</button>
+                    <button onClick={() => { onOpenPanel(); setMenuOpen(false); }}>🗂 Open panel (files/terminal/git)</button>
+                    <button onClick={() => insertSlash("/plan ")}>⌗ Slash: /plan</button>
+                    <button onClick={() => insertSlash("/test")}>⌗ Slash: /test</button>
+                    <button onClick={() => insertSlash("/commit")}>⌗ Slash: /commit</button>
+                  </>}
                 </div>
               )}
             </div>
 
             <button className="cc-icon" title="Attach image" onClick={() => fileInputRef.current?.click()}>🖼</button>
 
-            <button
-              className={`cc-bypass ${bypass ? "on" : ""}`}
-              onClick={() => setBypass((v) => !v)}
-              title={bypass ? "Bypass permissions ON — edits & commands auto-approve (dangerous ops still ask)" : "Turn on bypass to auto-approve edits & commands"}>
-              {bypass ? "⚡ Bypass on" : "🛡 Ask each time"}
-            </button>
-            <button
-              className={`cc-bypass ${lite ? "on" : ""}`}
-              onClick={() => setLite((v) => !v)}
-              title={lite ? "Lite mode ON — sends a compact repo map instead of full files (fewer tokens; agent reads files on demand)" : "Turn on Lite to save tokens (compact context)"}>
-              {lite ? "🪶 Lite on" : "🪶 Lite"}
-            </button>
+            {mode === "code" && <>
+              <button
+                className={`cc-bypass ${bypass ? "on" : ""}`}
+                onClick={() => setBypass((v) => !v)}
+                title={bypass ? "Bypass permissions ON — edits & commands auto-approve (dangerous ops still ask)" : "Turn on bypass to auto-approve edits & commands"}>
+                {bypass ? "⚡ Bypass on" : "🛡 Ask each time"}
+              </button>
+              <button
+                className={`cc-bypass ${lite ? "on" : ""}`}
+                onClick={() => setLite((v) => !v)}
+                title={lite ? "Lite mode ON — sends a compact repo map instead of full files (fewer tokens; agent reads files on demand)" : "Turn on Lite to save tokens (compact context)"}>
+                {lite ? "🪶 Lite on" : "🪶 Lite"}
+              </button>
+            </>}
 
             <select className="model-pick" value={providerSel}
               onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }} title="Provider">
@@ -290,15 +297,17 @@ export function Chat({
 
             <div style={{ flex: 1 }} />
 
-            <span className="cc-branch" title="Project · branch">
-              {projectName || "—"} {git.isRepo && <b>{git.branch}</b>}
-            </span>
-            {git.isRepo && (git.add > 0 || git.del > 0) && (
-              <span className="cc-diffstat"><span className="add">+{git.add}</span> <span className="del">−{git.del}</span></span>
-            )}
-            <button className="cc-commit" onClick={onCommit} disabled={!git.isRepo || !git.files} title="Commit changes">
-              Commit changes
-            </button>
+            {mode === "code" && <>
+              <span className="cc-branch" title="Project · branch">
+                {projectName || "—"} {git.isRepo && <b>{git.branch}</b>}
+              </span>
+              {git.isRepo && (git.add > 0 || git.del > 0) && (
+                <span className="cc-diffstat"><span className="add">+{git.add}</span> <span className="del">−{git.del}</span></span>
+              )}
+              <button className="cc-commit" onClick={onCommit} disabled={!git.isRepo || !git.files} title="Commit changes">
+                Commit changes
+              </button>
+            </>}
 
             {busy
               ? <button className="btn ghost" onClick={() => { socket.cancel(); setBusy(false); }}>■ Stop</button>

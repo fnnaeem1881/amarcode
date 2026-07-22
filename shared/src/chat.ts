@@ -16,6 +16,8 @@ export interface ChatSession {
   id: string;
   projectRoot: string;
   title: string;
+  /** "home" = plain chat (no project/tools); "code" = coding assistant. */
+  kind?: "home" | "code";
   /** Per-chat model override, if any. */
   providerId?: string;
   model?: string;

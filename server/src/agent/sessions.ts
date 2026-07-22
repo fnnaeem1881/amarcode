@@ -3,11 +3,11 @@ import type { ChatMessageInput, ChatSession, StoredMessage } from "@amarcode/sha
 import { db } from "../core/db.js";
 
 /** Chat session + message persistence. */
-export function createSession(projectRoot: string, title = "New chat"): ChatSession {
+export function createSession(projectRoot: string, title = "New chat", kind: "home" | "code" = "code"): ChatSession {
   const now = new Date().toISOString();
-  const s: ChatSession = { id: nanoid(), projectRoot, title, createdAt: now, updatedAt: now };
-  db().prepare("INSERT INTO sessions (id, project_root, title, provider_id, model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(s.id, s.projectRoot, s.title, null, null, now, now);
+  const s: ChatSession = { id: nanoid(), projectRoot, title, kind, createdAt: now, updatedAt: now };
+  db().prepare("INSERT INTO sessions (id, project_root, title, provider_id, model, kind, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(s.id, s.projectRoot, s.title, null, null, kind, now, now);
   return s;
 }
 
@@ -85,6 +85,7 @@ export function historyForModel(sessionId: string, keep = 12): ChatMessageInput[
 function rowToSession(r: any): ChatSession {
   return {
     id: r.id, projectRoot: r.project_root, title: r.title,
+    kind: (r.kind === "home" ? "home" : "code"),
     providerId: r.provider_id ?? undefined, model: r.model ?? undefined,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };

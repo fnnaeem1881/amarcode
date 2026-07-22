@@ -89,10 +89,12 @@ export function Sidebar({
 
       <button className="sb-new" onClick={onNewSession}>+ New session</button>
 
-      <div className="sb-actions">
-        <button className="sb-act" onClick={onIDE} title="Open the file editor (IDE)">⌨ IDE</button>
-        <button className="sb-act" onClick={onOpenProject} title="Open a project folder">📂 {projectName || "Project"}</button>
-      </div>
+      {tab === "code" && (
+        <div className="sb-actions">
+          <button className="sb-act" onClick={onIDE} title="Open the file editor (IDE)">⌨ IDE</button>
+          <button className="sb-act" onClick={onOpenProject} title="Open a project folder">📂 {projectName || "Project"}</button>
+        </div>
+      )}
 
       <div className="sb-scroll">
           {selected.size > 0 ? (

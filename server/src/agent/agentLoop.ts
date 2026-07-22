@@ -31,6 +31,8 @@ export interface AgentRunOptions {
   lite?: boolean;
   /** Attached images (data URIs) for vision-capable models. */
   images?: string[];
+  /** Home mode: plain assistant chat — no tools, no project context. */
+  chatOnly?: boolean;
   signal?: AbortSignal;
   emit: (e: AgentEvent) => void;
   /** Ask the UI for approval; resolves true/false. */
@@ -46,6 +48,23 @@ export interface AgentRunOptions {
  */
 export async function runAgent(opts: AgentRunOptions): Promise<string> {
   const { root, task, emit } = opts;
+
+  // Home mode: a plain, friendly assistant chat — no tools, no project files.
+  if (opts.chatOnly) {
+    const messages: ChatMessageInput[] = [
+      { role: "system", content: "You are AmarCode, a helpful, friendly AI assistant. Answer conversationally and concisely." },
+      ...opts.history,
+      { role: "user", content: task, images: opts.images },
+    ];
+    let text = "";
+    for await (const ev of router.streamChat("coding", messages, { stream: true, temperature: 0.5, maxOutputTokens: configStore.getSetting<number>("maxOutputTokens", 2048) }, opts.override, opts.signal)) {
+      if (ev.type === "text") { text += ev.delta; emit({ type: "text", delta: ev.delta }); }
+      else if (ev.type === "usage") emit({ type: "usage", inputTokens: ev.usage.inputTokens, outputTokens: ev.usage.outputTokens, totalTokens: ev.usage.inputTokens + ev.usage.outputTokens });
+      else if (ev.type === "error") { emit({ type: "error", message: ev.message }); return text; }
+    }
+    emit({ type: "done", text });
+    return text;
+  }
   const maxIterations = opts.maxIterations ?? 25; // enough for multi-file tasks + verification
   // Configurable output cap. Must be large enough to write file contents, which
   // count as output tokens — a low cap truncates files. Default 4096.

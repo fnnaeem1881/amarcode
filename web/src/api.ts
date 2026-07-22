@@ -67,7 +67,7 @@ export const api = {
   // sessions
   sessions: (root: string) => j<ChatSession[]>(`/api/sessions?root=${encodeURIComponent(root)}`),
   allSessions: () => j<ChatSession[]>("/api/sessions/all"),
-  createSession: (root: string, title?: string) => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title }) }),
+  createSession: (root: string, title?: string, kind?: "home" | "code") => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title, kind }) }),
   deleteSession: (id: string) => j(`/api/sessions/${id}`, { method: "DELETE" }),
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
   renameSession: (id: string, title: string) => j(`/api/sessions/${id}/title`, { method: "POST", body: JSON.stringify({ title }) }),

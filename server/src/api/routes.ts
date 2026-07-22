@@ -147,7 +147,7 @@ api.get("/graph/edges", (req, res) => {
 api.get("/sessions/all", (_req, res) => res.json(sessions.listAllSessions()));
 api.get("/sessions", (req, res) => res.json(sessions.listSessions(String(req.query.root ?? ""))));
 api.delete("/sessions/:id", (req, res) => { sessions.deleteSession(req.params.id); res.json({ ok: true }); });
-api.post("/sessions", (req, res) => res.json(sessions.createSession(req.body.root, req.body.title)));
+api.post("/sessions", (req, res) => res.json(sessions.createSession(req.body.root ?? "", req.body.title, req.body.kind === "home" ? "home" : "code")));
 api.get("/sessions/:id/messages", (req, res) => res.json(sessions.getMessages(req.params.id)));
 api.post("/sessions/:id/model", (req, res) => {
   sessions.setSessionModel(req.params.id, req.body.providerId, req.body.model);

@@ -98,4 +98,7 @@ function migrate(d: DatabaseSync): void {
       created_at TEXT NOT NULL
     );
   `);
+
+  // Incremental migrations (ignore "duplicate column" on existing DBs).
+  try { d.exec("ALTER TABLE sessions ADD COLUMN kind TEXT DEFAULT 'code'"); } catch { /* already exists */ }
 }

@@ -64,12 +64,15 @@ export function App() {
     s.connect().then(() => (socketRef.current = s)).catch(() => setStatus("engine offline"));
     api.listProviders().then(setProviders).catch(() => {});
     // Load every session across all projects (Claude-Code-style global list).
-    api.allSessions().then((list) => {
+    api.allSessions().then(async (list) => {
       setAllSessions(list);
-      // Restore the most recent session; its project becomes the active root.
-      if (list.length && !localStorage.getItem("root")) {
-        setSession(list[0]);
-        setRoot(list[0].projectRoot);
+      // Open in Home with the most recent home session (or a fresh one).
+      const home = list.filter((s) => (s.kind ?? "code") === "home");
+      if (home.length) setSession(home[0]);
+      else {
+        const s = await api.createSession("", "New chat", "home");
+        setAllSessions((xs) => [s, ...xs]);
+        setSession(s);
       }
     }).catch(() => {});
   }, []);
@@ -124,35 +127,38 @@ export function App() {
   // Open a project from the picker: switch root and select/create its session.
   async function openProjectFromPicker(dir: string) {
     showChat();
+    setSidebarTab("code");
     setRoot(dir);
-    const list = await api.sessions(dir).catch(() => []);
+    const list = (await api.sessions(dir).catch(() => [])).filter((s) => (s.kind ?? "code") === "code");
     if (list.length) setSession(list[0]);
     else {
-      const s = await api.createSession(dir, "New chat");
+      const s = await api.createSession(dir, "New chat", "code");
       setAllSessions((xs) => [s, ...xs]);
       setSession(s);
     }
     api.allSessions().then(setAllSessions).catch(() => {});
   }
 
-  // Selecting a session switches the working directory to that session's project.
+  // Selecting a session switches to its tab (home/code) and project.
   function selectSession(s: ChatSession) {
     showChat();
+    setShowIDE(false);
+    setSidebarTab(s.kind ?? "code");
     setSession(s);
-    if (s.projectRoot !== root) setRoot(s.projectRoot);
+    if ((s.kind ?? "code") === "code" && s.projectRoot && s.projectRoot !== root) setRoot(s.projectRoot);
   }
 
   async function newSession() {
     showChat();
-    setShowImageGen(false);
-    // Don't create another blank session if the current one is already an empty
-    // "New chat" — just keep it (avoids piling up empty sessions).
-    if (session && session.title === "New chat") {
+    setShowImageGen(false); setShowIDE(false);
+    const kind = sidebarTab; // Home creates a home (chat) session; Code a code session.
+    // Don't pile up empty "New chat" sessions of the same kind.
+    if (session && (session.kind ?? "code") === kind && session.title === "New chat") {
       const msgs = await api.messages(session.id).catch(() => []);
       if (msgs.length === 0) return;
     }
-    if (!root) { setShowPicker(true); return; }
-    const s = await api.createSession(root, "New chat");
+    if (kind === "code" && !root) { setShowPicker(true); return; }
+    const s = await api.createSession(kind === "home" ? "" : root, "New chat", kind);
     setAllSessions((xs) => [s, ...xs]);
     setSession(s);
   }
@@ -206,14 +212,34 @@ export function App() {
     catch (e) { alert(`Commit failed: ${e instanceof Error ? e.message : e}`); }
   }
 
+  // Home and Code have separate session lists.
+  const visibleSessions = allSessions.filter((s) => (s.kind ?? "code") === sidebarTab);
+
+  async function switchTab(tab: "home" | "code") {
+    setSidebarTab(tab);
+    setShowIDE(false); setShowPreview(false); setShowImageGen(false);
+    const visible = allSessions.filter((s) => (s.kind ?? "code") === tab);
+    if (visible.length) {
+      setSession(visible[0]);
+      if (tab === "code" && visible[0].projectRoot && visible[0].projectRoot !== root) setRoot(visible[0].projectRoot);
+    } else if (tab === "home") {
+      // Ensure a home session exists to chat in.
+      const s = await api.createSession("", "New chat", "home");
+      setAllSessions((xs) => [s, ...xs]);
+      setSession(s);
+    } else {
+      setSession(null); // Code with no sessions — user opens a project to start.
+    }
+  }
+
   const projectName = metadata?.name ?? (root ? root.split(/[\\/]/).pop() ?? "" : "");
 
   return (
     <div className={`cc-app ${sidebarCollapsed ? "collapsed" : ""}`}>
       <Sidebar
-        tab={sidebarTab} setTab={setSidebarTab}
+        tab={sidebarTab} setTab={switchTab}
         projectName={projectName}
-        sessions={allSessions} activeSessionId={session?.id ?? null}
+        sessions={visibleSessions} activeSessionId={session?.id ?? null}
         onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession} onRenameSession={renameSession} onDeleteSessions={deleteSessions}
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
         onOpenProject={() => setShowPicker(true)} onSettings={() => setShowSettings(true)}
@@ -223,18 +249,20 @@ export function App() {
       <div className="cc-main">
         <div className="cc-header">
           <button className="cc-icon" title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"} onClick={() => setSidebarCollapsed((v) => !v)}>☰</button>
-          <span className="cc-title">{session?.title ?? "AI Coding Assistant"}</span>
-          {projectName && <span className="cc-badge">{projectName}</span>}
-          <span className="hint" style={{ marginLeft: 10 }}>{status}</span>
+          <span className="cc-title">{session?.title ?? (sidebarTab === "home" ? "Chat" : "AI Coding Assistant")}</span>
+          {sidebarTab === "code" && projectName && <span className="cc-badge">{projectName}</span>}
+          {sidebarTab === "code" && <span className="hint" style={{ marginLeft: 10 }}>{status}</span>}
           <div style={{ flex: 1 }} />
           <button className="cc-icon" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button className={`cc-icon ${showIDE ? "on" : ""}`} title="IDE — browse & edit files" onClick={() => { setShowIDE((v) => !v); setShowImageGen(false); setShowPreview(false); }}>⌨ IDE</button>
-          <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { setShowImageGen((v) => !v); setShowPreview(false); setShowIDE(false); }}>🎨 Image</button>
-          <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => { setShowPreview((v) => !v); setShowImageGen(false); setShowIDE(false); }}>🌐 Preview</button>
-          <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
+          {sidebarTab === "code" && <>
+            <button className={`cc-icon ${showIDE ? "on" : ""}`} title="IDE — browse & edit files" onClick={() => { setShowIDE((v) => !v); setShowImageGen(false); setShowPreview(false); }}>{showIDE ? "✕ Close IDE" : "⌨ IDE"}</button>
+            <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { setShowImageGen((v) => !v); setShowPreview(false); setShowIDE(false); }}>🎨 Image</button>
+            <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => { setShowPreview((v) => !v); setShowImageGen(false); setShowIDE(false); }}>🌐 Preview</button>
+            <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
+          </>}
         </div>
 
         <div className="cc-body">
@@ -242,7 +270,8 @@ export function App() {
             <Chat
               root={root}
               session={session}
-              sessions={allSessions}
+              sessions={visibleSessions}
+              mode={sidebarTab}
               onSelectSession={selectSession}
               socket={socketRef.current}
               providers={providers}
