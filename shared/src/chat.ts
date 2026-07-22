@@ -9,6 +9,8 @@ export interface StoredMessage {
   content: string;
   toolCalls?: ToolCall[];
   toolCallId?: string;
+  /** Attached/generated images as data URIs. */
+  images?: string[];
   createdAt: string;
 }
 

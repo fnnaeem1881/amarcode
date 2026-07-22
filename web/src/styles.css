@@ -173,6 +173,9 @@ button.cc-chip:hover { border-color: var(--accent); color: var(--text); }
 .cc-thumb button { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border: none; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; line-height: 1; padding: 0; }
 .msg-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .msg-imgs img { max-width: 220px; max-height: 220px; border-radius: 6px; border: 1px solid var(--border); }
+.gen-imgs { display: flex; flex-wrap: wrap; gap: 10px; }
+.gen-imgs img { max-width: 420px; width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; }
+.gen-imgs a { display: block; }
 .cc-imgwarn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 12px 0; padding: 6px 10px; background: rgba(220,220,170,.1); border: 1px solid var(--yellow); border-radius: 8px; font-size: 12px; color: var(--text); }
 .cc-imgwarn button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; }
 .cc-imgwarn button:hover { background: var(--accent-hover); }
@@ -323,7 +326,7 @@ button.cc-chip:hover { border-color: var(--accent); color: var(--text); }
 .chat-log { flex: 1; overflow: auto; padding: 12px; }
 .msg { margin-bottom: 14px; }
 .msg .who { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; }
-.msg.user .bubble { background: #2b3a4a; }
+/* .msg.user .bubble { background: #2b3a4a; } */
 .msg .bubble { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; }
 .msg.assistant .bubble { background: var(--bg-alt); }
 .tool-chip { font-family: var(--mono); font-size: 11px; background: var(--bg-panel); border: 1px solid var(--border); border-left: 2px solid var(--purple); border-radius: 4px; padding: 4px 8px; margin: 4px 0; }

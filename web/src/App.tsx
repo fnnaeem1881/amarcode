@@ -256,6 +256,7 @@ export function App() {
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
         onOpenProject={() => { setPickerForNew(false); setShowPicker(true); }} onSettings={() => setShowSettings(true)}
         onIDE={() => { setShowIDE(true); setShowImageGen(false); setShowPreview(false); }}
+        onImage={() => { setShowImageGen(true); setShowIDE(false); setShowPreview(false); }}
       />
 
       <div className="cc-main">
@@ -308,9 +309,9 @@ export function App() {
               onGit={() => setGitRefreshKey((k) => k + 1)}
               onPreview={(url) => { setPreviewUrl(url); setShowPreview(true); }}
               previewUrl={previewUrl}
+              imageMode={showImageGen}
               contentOverride={
                 showIDE ? <IDE root={root} files={files} activePath={activePath} content={content} onOpenFile={openFile} onSaved={() => setGitRefreshKey((k) => k + 1)} />
-                : showImageGen ? <ImageGen providers={providers} />
                 : showPreview ? <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
                 : undefined
               }

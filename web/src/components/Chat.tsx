@@ -10,11 +10,14 @@ type Item =
   | { kind: "tool"; name: string; args: any; status: "running" | "ok" | "fail"; output?: string; add?: number; del?: number }
   | { kind: "diff"; unified: string }
   | { kind: "screenshot"; image: string; url: string }
+  | { kind: "images"; images: string[] }
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
+
+interface ImgModel { engine: string; id: string; label: string; needsKey?: string; local?: boolean }
 
 export function Chat({
   root, session, sessions, mode, onSelectSession, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
-  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl, contentOverride,
+  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl, contentOverride, imageMode,
 }: {
   root: string;
   session: ChatSession | null;
@@ -35,6 +38,7 @@ export function Chat({
   onPreview: (url: string) => void;
   previewUrl: string;
   contentOverride?: React.ReactNode;
+  imageMode?: boolean;
 }) {
   const sessionId = session?.id ?? null;
   const [items, setItems] = useState<Item[]>([]);
@@ -53,8 +57,20 @@ export function Chat({
   const [activeLabel, setActiveLabel] = useState<string>("default");
   const [menuOpen, setMenuOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]); // image data URIs
+  const [imgEngines, setImgEngines] = useState<ImgModel[]>([]);
+  const [imgSel, setImgSel] = useState<string>(""); // "engine::id"
   const logRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load free image engines when in image mode.
+  useEffect(() => {
+    if (!imageMode || imgEngines.length) return;
+    api.imageEngines().then((list) => {
+      setImgEngines(list);
+      if (list.length && !imgSel) setImgSel(`${list[0].engine}::${list[0].id}`);
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageMode]);
 
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
@@ -139,7 +155,25 @@ export function Chat({
     if (imgs.length) { e.preventDefault(); addFiles(imgs); }
   };
 
+  // Image mode: the composer prompt generates an image shown in the conversation.
+  const generateImage = async () => {
+    const p = input.trim();
+    if (!p || busy || !imgSel) return;
+    const [engine, model] = imgSel.split("::");
+    if (!items.some((i) => i.kind === "user")) onTitle(p.length > 48 ? p.slice(0, 48) + "…" : p);
+    push({ kind: "user", text: p });
+    setInput("");
+    setBusy(true); setStep("generating image…"); setElapsed(0);
+    try {
+      const r = await api.generateImageFree(engine, model, p);
+      push({ kind: "images", images: r.images });
+    } catch (e) {
+      push({ kind: "assistant", text: `⚠️ ${e instanceof Error ? e.message : e}` });
+    } finally { setBusy(false); setStep(""); }
+  };
+
   const send = () => {
+    if (imageMode) { void generateImage(); return; }
     const task = input.trim();
     if ((!task && attachments.length === 0) || busy) return;
     // Title the session from its first user message (like Claude Code).
@@ -204,7 +238,7 @@ export function Chat({
   const fmtTime = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
   const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
 
-  const hero = items.length === 0 && !busy;
+  const hero = items.length === 0 && !busy && !imageMode;
   const userName = localStorage.getItem("userName") || "";
   const fmtWhen = (iso: string) => {
     const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -242,7 +276,7 @@ export function Chat({
           )}
           <textarea
             value={input}
-            placeholder="Describe a task or ask a question…"
+            placeholder={imageMode ? "Describe an image to generate… (type again to adjust or make a new one)" : "Describe a task or ask a question…"}
             onChange={(e) => setInput(e.target.value)}
             onPaste={onPaste}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
@@ -267,9 +301,15 @@ export function Chat({
               )}
             </div>
 
-            <button className="cc-icon" title="Attach image" onClick={() => fileInputRef.current?.click()}>🖼</button>
+            {!imageMode && <button className="cc-icon" title="Attach image" onClick={() => fileInputRef.current?.click()}>🖼</button>}
 
-            {mode === "code" && <>
+            {imageMode && (
+              <select className="model-pick" style={{ maxWidth: 260 }} value={imgSel} onChange={(e) => setImgSel(e.target.value)} title="Image model">
+                {imgEngines.map((m) => <option key={`${m.engine}::${m.id}`} value={`${m.engine}::${m.id}`}>🎨 {m.label}</option>)}
+              </select>
+            )}
+
+            {mode === "code" && !imageMode && <>
               <button
                 className={`cc-bypass ${bypass ? "on" : ""}`}
                 onClick={() => setBypass((v) => !v)}
@@ -284,16 +324,18 @@ export function Chat({
               </button>
             </>}
 
-            <select className="model-pick" value={providerSel}
-              onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }} title="Provider">
-              <option value="">provider…</option>
-              {enabledProviders.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-            </select>
-            <select className="model-pick" value={modelSel}
-              onChange={(e) => setModelSel(e.target.value)} title="Model" disabled={!providerSel}>
-              <option value="">{models.length ? "model…" : "load models"}</option>
-              {models.map((m) => <option key={m} value={m}>{modelHasVision(m) ? "👁 " : ""}{m}</option>)}
-            </select>
+            {!imageMode && <>
+              <select className="model-pick" value={providerSel}
+                onChange={(e) => { setProviderSel(e.target.value); setModelSel(""); loadModels(e.target.value); }} title="Provider">
+                <option value="">provider…</option>
+                {enabledProviders.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+              <select className="model-pick" value={modelSel}
+                onChange={(e) => setModelSel(e.target.value)} title="Model" disabled={!providerSel}>
+                <option value="">{models.length ? "model…" : "load models"}</option>
+                {models.map((m) => <option key={m} value={m}>{modelHasVision(m) ? "👁 " : ""}{m}</option>)}
+              </select>
+            </>}
 
             <div style={{ flex: 1 }} />
 
@@ -350,6 +392,9 @@ export function Chat({
       ) : null}
       <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto", display: "none" } : undefined}>
         <div className="cc-col">
+          {imageMode && items.length === 0 && !busy && (
+            <div className="cc-empty"><div className="cc-empty-title">🎨 Generate an image</div><div className="hint">Type a description in the box below and press Enter. Then type again to adjust or make a new one.</div></div>
+          )}
           {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
 
           {busy && (
@@ -402,6 +447,17 @@ function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok:
       <div className="shot">
         <div className="shot-cap">🖥 {item.url}</div>
         <img src={item.image} alt="browser screenshot" />
+      </div>
+    );
+  if (item.kind === "images")
+    return (
+      <div className="msg assistant">
+        <div className="who">Image</div>
+        <div className="gen-imgs">
+          {item.images.map((src, i) => (
+            <a key={i} href={src} download={`image-${i}.png`} title="Click to download"><img src={src} alt="generated" /></a>
+          ))}
+        </div>
       </div>
     );
   if (item.kind === "approval")

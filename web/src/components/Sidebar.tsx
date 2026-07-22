@@ -6,7 +6,7 @@ interface FileRow { path: string; language: string; size: number; symbols: numbe
 /** Left rail — mirrors the Claude Code desktop: Home (sessions) / Code (files). */
 export function Sidebar({
   tab, setTab, projectName, sessions, activeSessionId, onSelectSession, onNewSession, onDeleteSession, onRenameSession, onDeleteSessions,
-  metadata, files, onOpenFile, onOpenProject, onSettings, onIDE, activePath,
+  metadata, files, onOpenFile, onOpenProject, onSettings, onIDE, onImage, activePath,
 }: {
   tab: "home" | "code";
   setTab: (t: "home" | "code") => void;
@@ -89,6 +89,12 @@ export function Sidebar({
       </div>
 
       <button className="sb-new" onClick={onNewSession}>+ New session</button>
+
+      {tab === "home" && (
+        <div className="sb-actions">
+          <button className="sb-act" onClick={onImage} title="Generate images (free)">🎨 Image</button>
+        </div>
+      )}
 
       {tab === "code" && (
         <div className="sb-actions">

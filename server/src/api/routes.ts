@@ -150,6 +150,13 @@ api.get("/sessions", (req, res) => res.json(sessions.listSessions(String(req.que
 api.delete("/sessions/:id", (req, res) => { sessions.deleteSession(req.params.id); res.json({ ok: true }); });
 api.post("/sessions", (req, res) => res.json(sessions.createSession(req.body.root ?? "", req.body.title, req.body.kind === "home" ? "home" : "code")));
 api.get("/sessions/:id/messages", (req, res) => res.json(sessions.getMessages(req.params.id)));
+// Append a message directly (used by composer-driven image generation, which
+// runs over REST rather than the chat WebSocket, so its turns still persist).
+api.post("/sessions/:id/messages", (req, res) => {
+  const { role, content, images } = req.body as { role?: string; content?: string; images?: string[] };
+  const r = (role === "assistant" || role === "user" || role === "tool" || role === "system") ? role : "user";
+  res.json(sessions.addMessage(req.params.id, { role: r, content: String(content ?? ""), images: Array.isArray(images) ? images : undefined }));
+});
 api.post("/sessions/:id/model", (req, res) => {
   sessions.setSessionModel(req.params.id, req.body.providerId, req.body.model);
   res.json({ ok: true });

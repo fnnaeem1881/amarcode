@@ -43,8 +43,8 @@ export function renameSession(id: string, title: string): void {
 
 export function addMessage(sessionId: string, msg: Omit<StoredMessage, "id" | "sessionId" | "createdAt">): StoredMessage {
   const stored: StoredMessage = { id: nanoid(), sessionId, createdAt: new Date().toISOString(), ...msg };
-  db().prepare("INSERT INTO messages (id, session_id, role, content, tool_calls_json, tool_call_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(stored.id, sessionId, stored.role, stored.content, stored.toolCalls ? JSON.stringify(stored.toolCalls) : null, stored.toolCallId ?? null, stored.createdAt);
+  db().prepare("INSERT INTO messages (id, session_id, role, content, tool_calls_json, tool_call_id, images_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(stored.id, sessionId, stored.role, stored.content, stored.toolCalls ? JSON.stringify(stored.toolCalls) : null, stored.toolCallId ?? null, stored.images && stored.images.length ? JSON.stringify(stored.images) : null, stored.createdAt);
   db().prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(stored.createdAt, sessionId);
   return stored;
 }
@@ -54,7 +54,9 @@ export function getMessages(sessionId: string): StoredMessage[] {
   return rows.map((r) => ({
     id: r.id, sessionId: r.session_id, role: r.role, content: r.content,
     toolCalls: r.tool_calls_json ? JSON.parse(r.tool_calls_json) : undefined,
-    toolCallId: r.tool_call_id ?? undefined, createdAt: r.created_at,
+    toolCallId: r.tool_call_id ?? undefined,
+    images: r.images_json ? JSON.parse(r.images_json) : undefined,
+    createdAt: r.created_at,
   }));
 }
 
