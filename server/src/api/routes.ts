@@ -258,11 +258,11 @@ api.post("/preview/stop", (req, res) => { devServer.stopServer(root(req)); res.j
 api.get("/image/engines", (_req, res) => res.json(imageEngines.IMAGE_MODELS));
 
 api.post("/image/generate", async (req, res) => {
-  const { engine, providerId, model, prompt } = req.body as { engine?: string; providerId?: string; model: string; prompt: string };
+  const { engine, providerId, model, prompt, image } = req.body as { engine?: string; providerId?: string; model: string; prompt: string; image?: string };
   try {
     let images: string[];
     if (engine) {
-      images = await imageEngines.generateImage(engine as any, model, prompt);
+      images = await imageEngines.generateImage(engine as any, model, prompt, image || undefined);
     } else {
       const provider: any = createProvider(configStore.getProvider(providerId!)!);
       if (typeof provider.generateImages !== "function") {

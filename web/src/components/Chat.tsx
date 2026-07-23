@@ -59,6 +59,7 @@ export function Chat({
   const [attachments, setAttachments] = useState<string[]>([]); // image data URIs
   const [imgEngines, setImgEngines] = useState<ImgModel[]>([]);
   const [imgSel, setImgSel] = useState<string>(""); // "engine::id"
+  const [imgSetup, setImgSetup] = useState(false);  // ⚙ engine tokens/URLs popover
   const logRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,20 +161,40 @@ export function Chat({
     if (imgs.length) { e.preventDefault(); addFiles(imgs); }
   };
 
-  // Image mode: the composer prompt generates an image shown in the conversation.
+  // Shrink a data-URI image so editing engines get a manageable payload.
+  const downscale = (src: string, max = 768): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        if (scale === 1 && src.length < 400_000) return resolve(src);
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => resolve(src);
+      img.src = src;
+    });
+
+  // Image mode: the composer prompt generates an image — or, when a base image
+  // is attached (upload/paste/“✎ Edit”), modifies it per the instruction.
   const generateImage = async () => {
     const p = input.trim();
     if (!p || busy || !imgSel) return;
     const [engine, model] = imgSel.split("::");
+    const baseImg = attachments[0] ? await downscale(attachments[0]) : undefined;
     if (!items.some((i) => i.kind === "user")) onTitle(p.length > 48 ? p.slice(0, 48) + "…" : p);
-    push({ kind: "user", text: p });
+    push({ kind: "user", text: p, images: baseImg ? [baseImg] : undefined });
     setInput("");
-    setBusy(true); setStep("generating image…"); setElapsed(0);
+    setAttachments([]);
+    setBusy(true); setStep(baseImg ? "editing image…" : "generating image…"); setElapsed(0);
     // Persist the prompt now so the turn survives even if generation fails or
     // the user navigates away mid-render.
-    if (sessionId) api.addMessage(sessionId, { role: "user", content: p }).catch(() => {});
+    if (sessionId) api.addMessage(sessionId, { role: "user", content: p, images: baseImg ? [baseImg] : undefined }).catch(() => {});
     try {
-      const r = await api.generateImageFree(engine, model, p);
+      const r = await api.generateImageFree(engine, model, p, baseImg);
       push({ kind: "images", images: r.images });
       if (sessionId) api.addMessage(sessionId, { role: "assistant", content: "", images: r.images }).catch(() => {});
     } catch (e) {
@@ -285,13 +306,19 @@ export function Chat({
           )}
           <textarea
             value={input}
-            placeholder={imageMode ? "Describe an image to generate… (type again to adjust or make a new one)" : "Describe a task or ask a question…"}
+            placeholder={imageMode
+              ? (attachments.length
+                ? "Describe how to edit this image… (e.g. make the sky purple, remove the car)"
+                : "Describe an image to generate… (or upload/paste one to edit)")
+              : "Describe a task or ask a question…"}
             onChange={(e) => setInput(e.target.value)}
             onPaste={onPaste}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           />
           <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
             onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+
+          {imageMode && imgSetup && <ImgSetup onClose={() => setImgSetup(false)} />}
 
           <div className="cc-composer-bar">
             <div className="cc-plus">
@@ -310,12 +337,15 @@ export function Chat({
               )}
             </div>
 
-            {!imageMode && <button className="cc-icon" title="Attach image" onClick={() => fileInputRef.current?.click()}>🖼</button>}
+            <button className="cc-icon" title={imageMode ? "Upload an image to edit/modify" : "Attach image"} onClick={() => fileInputRef.current?.click()}>🖼</button>
 
             {imageMode && (
-              <select className="model-pick" style={{ maxWidth: 260 }} value={imgSel} onChange={(e) => setImgSel(e.target.value)} title="Image model">
-                {imgEngines.map((m) => <option key={`${m.engine}::${m.id}`} value={`${m.engine}::${m.id}`}>🎨 {m.label}</option>)}
-              </select>
+              <>
+                <select className="model-pick" style={{ maxWidth: 260 }} value={imgSel} onChange={(e) => setImgSel(e.target.value)} title="Image model">
+                  {imgEngines.map((m) => <option key={`${m.engine}::${m.id}`} value={`${m.engine}::${m.id}`}>🎨 {m.label}</option>)}
+                </select>
+                <button className="cc-icon" title="Image engine setup (free tokens / local URLs)" onClick={() => setImgSetup((v) => !v)}>⚙</button>
+              </>
             )}
 
             {mode === "code" && !imageMode && <>
@@ -362,7 +392,7 @@ export function Chat({
 
             {busy
               ? <button className="btn ghost" onClick={() => { socket.cancel(); setBusy(false); }}>■ Stop</button>
-              : <button className="cc-send" onClick={send} disabled={!root || !input.trim()}>↑</button>}
+              : <button className="cc-send" onClick={send} disabled={(mode === "code" && !imageMode && !root) || !input.trim()}>↑</button>}
           </div>
         </div>
       </div>
@@ -402,9 +432,12 @@ export function Chat({
       <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto", display: "none" } : undefined}>
         <div className="cc-col">
           {imageMode && items.length === 0 && !busy && (
-            <div className="cc-empty"><div className="cc-empty-title">🎨 Generate an image</div><div className="hint">Type a description in the box below and press Enter. Then type again to adjust or make a new one.</div></div>
+            <div className="cc-empty"><div className="cc-empty-title">🎨 Generate or edit an image</div><div className="hint">Type a description below and press Enter — or upload/paste a photo (🖼) and tell it what to change. After a result, hit ✎ Edit on it to keep adjusting.</div></div>
           )}
-          {items.map((it, i) => <ChatItem key={i} item={it} onResolve={resolveApproval} />)}
+          {items.map((it, i) => (
+            <ChatItem key={i} item={it} onResolve={resolveApproval}
+              onEditImage={imageMode ? (src) => { setAttachments([src]); } : undefined} />
+          ))}
 
           {busy && (
             <div className="cc-working">
@@ -426,7 +459,40 @@ export function Chat({
   );
 }
 
-function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok: boolean) => void }) {
+/** ⚙ Free-engine setup: tokens (no credit card) + local server URLs. */
+function ImgSetup({ onClose }: { onClose: () => void }) {
+  const keys = [
+    { key: "pollinationsToken", label: "Pollinations token", hint: "free — enter.pollinations.ai (needed for image editing)" },
+    { key: "hfToken", label: "Hugging Face token", hint: "free — huggingface.co/settings/tokens" },
+    { key: "a1111Url", label: "AUTOMATIC1111 / Forge URL", hint: "local — default http://127.0.0.1:7860" },
+    { key: "comfyUrl", label: "ComfyUI URL", hint: "local — default http://127.0.0.1:8188" },
+  ];
+  const [vals, setVals] = useState<Record<string, string>>({});
+  useEffect(() => {
+    for (const k of keys) api.getSetting(k.key).then((r) => setVals((v) => ({ ...v, [k.key]: r.value ?? "" }))).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div className="img-setup">
+      <div className="img-setup-head">
+        <b>Image engine setup</b> <span className="hint">all free — no credit card</span>
+        <div style={{ flex: 1 }} />
+        <button className="cc-icon" onClick={onClose}>✕</button>
+      </div>
+      {keys.map((k) => (
+        <label key={k.key} className="img-setup-row">
+          <span>{k.label} <span className="hint">· {k.hint}</span></span>
+          <input type={k.key.endsWith("Token") ? "password" : "text"} value={vals[k.key] ?? ""}
+            placeholder={k.hint}
+            onChange={(e) => setVals((v) => ({ ...v, [k.key]: e.target.value }))}
+            onBlur={(e) => api.setSetting(k.key, e.target.value.trim()).catch(() => {})} />
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ChatItem({ item, onResolve, onEditImage }: { item: Item; onResolve: (id: string, ok: boolean) => void; onEditImage?: (src: string) => void }) {
   if (item.kind === "user") return (
     <div className="msg user">
       <div className="who">You</div>
@@ -464,7 +530,13 @@ function ChatItem({ item, onResolve }: { item: Item; onResolve: (id: string, ok:
         <div className="who">Image</div>
         <div className="gen-imgs">
           {item.images.map((src, i) => (
-            <a key={i} href={src} download={`image-${i}.png`} title="Click to download"><img src={src} alt="generated" /></a>
+            <div className="gen-img" key={i}>
+              <a href={src} download={`image-${i}.png`} title="Click to download"><img src={src} alt="generated" /></a>
+              {onEditImage && (
+                <button className="gen-edit" title="Edit this image — it becomes the base; type an instruction below"
+                  onClick={() => onEditImage(src)}>✎ Edit</button>
+              )}
+            </div>
           ))}
         </div>
       </div>

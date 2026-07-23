@@ -176,6 +176,17 @@ button.cc-chip:hover { border-color: var(--accent); color: var(--text); }
 .gen-imgs { display: flex; flex-wrap: wrap; gap: 10px; }
 .gen-imgs img { max-width: 420px; width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; }
 .gen-imgs a { display: block; }
+.gen-img { position: relative; }
+.gen-edit { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.62); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 8px; padding: 4px 10px; font-size: 12px; opacity: 0; transition: opacity .12s; }
+.gen-img:hover .gen-edit { opacity: 1; }
+.gen-edit:hover { background: rgba(0,0,0,.85); }
+
+/* ⚙ image engine setup (free tokens + local URLs) */
+.img-setup { margin: 8px 12px 0; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+.img-setup-head { display: flex; align-items: center; gap: 8px; }
+.img-setup-row { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.img-setup-row input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: 12.5px; }
+.img-setup-row input:focus { outline: none; border-color: var(--accent); }
 .cc-imgwarn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 12px 0; padding: 6px 10px; background: rgba(220,220,170,.1); border: 1px solid var(--yellow); border-radius: 8px; font-size: 12px; color: var(--text); }
 .cc-imgwarn button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; }
 .cc-imgwarn button:hover { background: var(--accent-hover); }
