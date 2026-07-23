@@ -17,6 +17,7 @@ export interface ImageModel {
   label: string;
   needsKey?: "hf";     // needs a Hugging Face token
   local?: boolean;     // needs a local server URL
+  video?: boolean;     // produces video instead of a still image
 }
 
 export const IMAGE_MODELS: ImageModel[] = [
@@ -47,6 +48,12 @@ export const IMAGE_MODELS: ImageModel[] = [
   // Local frameworks (run them yourself; set the URL).
   { engine: "a1111", id: "current", label: "AUTOMATIC1111 / Forge (local) · uses loaded checkpoint", local: true },
   { engine: "comfyui", id: "sdxl", label: "ComfyUI (local) · default SDXL workflow", local: true },
+
+  // 🎬 Video — free paths: HF token (small free monthly credits) or local ComfyUI.
+  { engine: "huggingface", id: "Lightricks/LTX-Video", label: "🎬 LTX-Video (HF · free credits)", needsKey: "hf", video: true },
+  { engine: "huggingface", id: "Wan-AI/Wan2.1-T2V-1.3B", label: "🎬 Wan 2.1 T2V (HF · free credits)", needsKey: "hf", video: true },
+  { engine: "huggingface", id: "genmo/mochi-1-preview", label: "🎬 Mochi 1 (HF · free credits)", needsKey: "hf", video: true },
+  { engine: "comfyui", id: "video-workflow", label: "🎬 ComfyUI video (local) · your workflow", local: true, video: true },
 ];
 
 /**
@@ -59,6 +66,12 @@ export const IMAGE_MODELS: ImageModel[] = [
  *  - comfyui      : img2img workflow (local, no key)
  */
 export async function generateImage(engine: ImageEngine, model: string, prompt: string, image?: string): Promise<string[]> {
+  const isVideo = IMAGE_MODELS.some((m) => m.engine === engine && m.id === model && m.video);
+  if (isVideo) {
+    if (engine === "huggingface") return hfVideo(model, prompt);
+    if (engine === "comfyui") return comfyVideo(prompt);
+    throw new Error(`No video support for engine: ${engine}`);
+  }
   switch (engine) {
     case "pollinations": return pollinations(model, prompt, image);
     case "huggingface": return huggingface(model, prompt, image);
@@ -66,6 +79,92 @@ export async function generateImage(engine: ImageEngine, model: string, prompt: 
     case "comfyui": return comfyui(prompt, image);
     default: throw new Error(`Unknown image engine: ${engine}`);
   }
+}
+
+/**
+ * Text-to-video through Hugging Face Inference Providers (fal.ai queue).
+ * A free HF token includes small monthly inference credits — enough for a few
+ * short clips per month, with no credit card.
+ */
+async function hfVideo(model: string, prompt: string): Promise<string[]> {
+  const token = configStore.getSetting<string>("hfToken", "");
+  if (!token) throw new Error("Video needs a free Hugging Face token (huggingface.co/settings/tokens — no credit card). Add it via ⚙ next to the model picker.");
+  const auth = { authorization: `Bearer ${token}` };
+
+  // Resolve which inference provider serves this model.
+  const info = await fetch(`https://huggingface.co/api/models/${model}?expand[]=inferenceProviderMapping`, { headers: auth })
+    .then((r) => r.json()).catch(() => ({})) as any;
+  const mappings = Array.isArray(info.inferenceProviderMapping) ? info.inferenceProviderMapping : [];
+  const fal = mappings.find((m: any) => m.provider === "fal-ai" && m.status === "live");
+  if (!fal) throw new Error(`${model} isn't currently served by fal.ai on Hugging Face — pick another 🎬 model.`);
+
+  // Submit to the fal queue through the HF router, then poll to completion.
+  const basePath = `https://router.huggingface.co/fal-ai/${fal.providerId}`;
+  const submit = await fetch(`${basePath}?_subdomain=queue`, {
+    method: "POST", headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  if (submit.status === 402) throw new Error("Out of free Hugging Face inference credits for this month — try local ComfyUI video, or wait for the monthly reset.");
+  if (!submit.ok) throw new Error(`Hugging Face video ${submit.status}: ${(await submit.text()).slice(0, 200)}`);
+  const { request_id: reqId, status_url: statusUrl, response_url: responseUrl } = await submit.json() as any;
+  if (!reqId) throw new Error("fal.ai queue didn't return a request id.");
+
+  const statusEndpoint = statusUrl?.includes("router.huggingface.co") ? statusUrl : `${basePath}/requests/${reqId}/status?_subdomain=queue`;
+  const resultEndpoint = responseUrl?.includes("router.huggingface.co") ? responseUrl : `${basePath}/requests/${reqId}?_subdomain=queue`;
+  for (let i = 0; i < 120; i++) { // up to ~6 minutes
+    await new Promise((r) => setTimeout(r, 3000));
+    const st = await fetch(statusEndpoint, { headers: auth }).then((r) => r.json()).catch(() => ({})) as any;
+    if (st.status === "COMPLETED") {
+      const out = await fetch(resultEndpoint, { headers: auth }).then((r) => r.json()) as any;
+      const url = out?.video?.url ?? out?.videos?.[0]?.url ?? out?.output?.url;
+      if (!url) throw new Error("Video finished but no URL came back.");
+      const vid = await fetch(url);
+      const buf = Buffer.from(await vid.arrayBuffer());
+      const mime = vid.headers.get("content-type") || "video/mp4";
+      return [`data:${mime};base64,${buf.toString("base64")}`];
+    }
+    if (st.status === "FAILED" || st.error) throw new Error(`Video generation failed: ${st.error ?? "unknown error"}`);
+  }
+  throw new Error("Video generation timed out (~6 min). Short prompts and LTX-Video are fastest.");
+}
+
+/**
+ * Local ComfyUI video using the user's own API-format workflow JSON (set via ⚙),
+ * with "{PROMPT}" inside it replaced by the chat prompt. Collects any videos,
+ * gifs or animated images the workflow saves.
+ */
+async function comfyVideo(prompt: string): Promise<string[]> {
+  const base = (configStore.getSetting<string>("comfyUrl", "http://127.0.0.1:8188") || "http://127.0.0.1:8188").replace(/\/$/, "");
+  const wfRaw = configStore.getSetting<string>("comfyVideoWorkflow", "");
+  if (!wfRaw) throw new Error('ComfyUI video needs a workflow: in ComfyUI, build any text-to-video flow (LTX-Video, Wan, AnimateDiff…), use "Export (API format)", put {PROMPT} where the prompt text goes, and paste the JSON via ⚙.');
+  let workflow: any;
+  try { workflow = JSON.parse(wfRaw.replaceAll("{PROMPT}", prompt.replaceAll('"', '\\"'))); }
+  catch { throw new Error("The ComfyUI video workflow isn't valid JSON — re-export it in API format."); }
+
+  const q = await fetch(`${base}/prompt`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: workflow }) })
+    .catch(() => { throw new Error(`Can't reach ComfyUI at ${base}.`); });
+  if (!q.ok) throw new Error(`ComfyUI ${q.status}: ${(await q.text()).slice(0, 200)}`);
+  const { prompt_id } = await q.json() as any;
+  for (let i = 0; i < 200; i++) { // videos are slow — up to ~10 minutes
+    await new Promise((r) => setTimeout(r, 3000));
+    const h = await fetch(`${base}/history/${prompt_id}`).then((r) => r.json()).catch(() => ({})) as any;
+    const outputs = h?.[prompt_id]?.outputs;
+    if (outputs) {
+      const media: string[] = [];
+      for (const node of Object.values(outputs) as any[]) {
+        for (const f of [...(node.gifs ?? []), ...(node.videos ?? []), ...(node.images ?? [])]) {
+          const url = `${base}/view?filename=${encodeURIComponent(f.filename)}&subfolder=${encodeURIComponent(f.subfolder || "")}&type=${f.type || "output"}`;
+          const r = await fetch(url);
+          const buf = Buffer.from(await r.arrayBuffer());
+          const ext = String(f.filename).split(".").pop()?.toLowerCase() ?? "png";
+          const mime = ext === "mp4" ? "video/mp4" : ext === "webm" ? "video/webm" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/png";
+          media.push(`data:${mime};base64,${buf.toString("base64")}`);
+        }
+      }
+      if (media.length) return media;
+    }
+  }
+  throw new Error("ComfyUI video timed out (~10 min).");
 }
 
 async function pollinations(model: string, prompt: string, image?: string): Promise<string[]> {

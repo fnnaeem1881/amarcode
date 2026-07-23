@@ -101,5 +101,6 @@ function migrate(d: DatabaseSync): void {
 
   // Incremental migrations (ignore "duplicate column" on existing DBs).
   try { d.exec("ALTER TABLE sessions ADD COLUMN kind TEXT DEFAULT 'code'"); } catch { /* already exists */ }
+  try { d.exec("ALTER TABLE sessions ADD COLUMN mode TEXT DEFAULT 'chat'"); } catch { /* already exists */ }
   try { d.exec("ALTER TABLE messages ADD COLUMN images_json TEXT"); } catch { /* already exists */ }
 }

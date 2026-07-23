@@ -3,11 +3,11 @@ import type { ChatMessageInput, ChatSession, StoredMessage } from "@amarcode/sha
 import { db } from "../core/db.js";
 
 /** Chat session + message persistence. */
-export function createSession(projectRoot: string, title = "New chat", kind: "home" | "code" = "code"): ChatSession {
+export function createSession(projectRoot: string, title = "New chat", kind: "home" | "code" = "code", mode: "chat" | "image" | "video" = "chat"): ChatSession {
   const now = new Date().toISOString();
-  const s: ChatSession = { id: nanoid(), projectRoot, title, kind, createdAt: now, updatedAt: now };
-  db().prepare("INSERT INTO sessions (id, project_root, title, provider_id, model, kind, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(s.id, s.projectRoot, s.title, null, null, kind, now, now);
+  const s: ChatSession = { id: nanoid(), projectRoot, title, kind, mode, createdAt: now, updatedAt: now };
+  db().prepare("INSERT INTO sessions (id, project_root, title, provider_id, model, kind, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(s.id, s.projectRoot, s.title, null, null, kind, mode, now, now);
   return s;
 }
 
@@ -16,10 +16,28 @@ export function listSessions(projectRoot: string): ChatSession[] {
   return rows.map(rowToSession);
 }
 
-/** Every session across all projects (for the Claude-Code-style global list). */
+/** Every session across all projects, with a last-message preview snippet. */
 export function listAllSessions(): ChatSession[] {
-  const rows = db().prepare("SELECT * FROM sessions ORDER BY updated_at DESC").all() as any[];
-  return rows.map(rowToSession);
+  const rows = db().prepare(`
+    SELECT s.*,
+      (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS msg_count,
+      (SELECT m.content FROM messages m WHERE m.session_id = s.id AND m.content != ''
+         ORDER BY m.created_at DESC LIMIT 1) AS last_text,
+      (SELECT m.images_json IS NOT NULL FROM messages m WHERE m.session_id = s.id
+         ORDER BY m.created_at DESC LIMIT 1) AS last_media
+    FROM sessions s ORDER BY s.updated_at DESC
+  `).all() as any[];
+  return rows.map((r) => ({
+    ...rowToSession(r),
+    msgCount: Number(r.msg_count ?? 0),
+    preview: r.last_media && !r.last_text
+      ? (r.mode === "video" ? "🎬 generated video" : "🎨 generated image")
+      : (r.last_text ? String(r.last_text).replace(/\s+/g, " ").slice(0, 90) : undefined),
+  }));
+}
+
+export function setSessionMode(id: string, mode: "chat" | "image" | "video"): void {
+  db().prepare("UPDATE sessions SET mode = ? WHERE id = ?").run(mode, id);
 }
 
 export function deleteSession(id: string): void {
@@ -88,6 +106,7 @@ function rowToSession(r: any): ChatSession {
   return {
     id: r.id, projectRoot: r.project_root, title: r.title,
     kind: (r.kind === "home" ? "home" : "code"),
+    mode: (r.mode === "image" || r.mode === "video" ? r.mode : "chat"),
     providerId: r.provider_id ?? undefined, model: r.model ?? undefined,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };

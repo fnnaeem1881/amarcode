@@ -67,12 +67,13 @@ export const api = {
   // sessions
   sessions: (root: string) => j<ChatSession[]>(`/api/sessions?root=${encodeURIComponent(root)}`),
   allSessions: () => j<ChatSession[]>("/api/sessions/all"),
-  createSession: (root: string, title?: string, kind?: "home" | "code") => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title, kind }) }),
+  createSession: (root: string, title?: string, kind?: "home" | "code", mode?: "chat" | "image" | "video") => j<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify({ root, title, kind, mode }) }),
   deleteSession: (id: string) => j(`/api/sessions/${id}`, { method: "DELETE" }),
   messages: (id: string) => j<StoredMessage[]>(`/api/sessions/${id}/messages`),
   addMessage: (id: string, msg: { role: "user" | "assistant"; content: string; images?: string[] }) =>
     j<StoredMessage>(`/api/sessions/${id}/messages`, { method: "POST", body: JSON.stringify(msg) }),
   renameSession: (id: string, title: string) => j(`/api/sessions/${id}/title`, { method: "POST", body: JSON.stringify({ title }) }),
+  setSessionMode: (id: string, mode: "chat" | "image" | "video") => j(`/api/sessions/${id}/mode`, { method: "POST", body: JSON.stringify({ mode }) }),
 
   // image generation
   generateImage: (providerId: string, model: string, prompt: string) =>

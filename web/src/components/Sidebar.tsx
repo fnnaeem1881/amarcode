@@ -6,7 +6,7 @@ interface FileRow { path: string; language: string; size: number; symbols: numbe
 /** Left rail — mirrors the Claude Code desktop: Home (sessions) / Code (files). */
 export function Sidebar({
   tab, setTab, projectName, sessions, activeSessionId, onSelectSession, onNewSession, onDeleteSession, onRenameSession, onDeleteSessions,
-  metadata, files, onOpenFile, onOpenProject, onSettings, onIDE, onImage, activePath,
+  metadata, files, onOpenFile, onOpenProject, onSettings, onIDE, onImage, onVideo, activePath,
 }: {
   tab: "home" | "code";
   setTab: (t: "home" | "code") => void;
@@ -25,6 +25,7 @@ export function Sidebar({
   onSettings: () => void;
   onIDE: () => void;
   onImage: () => void;
+  onVideo: () => void;
   activePath: string | null;
 }) {
   const projOf = (root: string) => root.split(/[\\/]/).filter(Boolean).pop() ?? root;
@@ -93,6 +94,7 @@ export function Sidebar({
       {tab === "home" && (
         <div className="sb-actions">
           <button className="sb-act" onClick={onImage} title="Generate images (free)">🎨 Image</button>
+          <button className="sb-act" onClick={onVideo} title="Generate videos (free — HF token or local ComfyUI)">🎬 Video</button>
         </div>
       )}
 
@@ -126,7 +128,7 @@ export function Sidebar({
               title={`${projOf(s.projectRoot)} · ${new Date(s.updatedAt).toLocaleString()}`}>
               {activeSessionId === s.id && <span className="dot" />}
               <div className="sb-session-text">
-                <span className="title">{s.title}</span>
+                <span className="title">{s.mode === "image" ? "🎨 " : s.mode === "video" ? "🎬 " : ""}{s.title}</span>
                 <span className="proj">{projOf(s.projectRoot)}</span>
               </div>
               <button className="sb-del" title="More"

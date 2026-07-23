@@ -148,7 +148,11 @@ api.get("/graph/edges", (req, res) => {
 api.get("/sessions/all", (_req, res) => res.json(sessions.listAllSessions()));
 api.get("/sessions", (req, res) => res.json(sessions.listSessions(String(req.query.root ?? ""))));
 api.delete("/sessions/:id", (req, res) => { sessions.deleteSession(req.params.id); res.json({ ok: true }); });
-api.post("/sessions", (req, res) => res.json(sessions.createSession(req.body.root ?? "", req.body.title, req.body.kind === "home" ? "home" : "code")));
+api.post("/sessions", (req, res) => {
+  const m = req.body.mode;
+  res.json(sessions.createSession(req.body.root ?? "", req.body.title, req.body.kind === "home" ? "home" : "code",
+    m === "image" || m === "video" ? m : "chat"));
+});
 api.get("/sessions/:id/messages", (req, res) => res.json(sessions.getMessages(req.params.id)));
 // Append a message directly (used by composer-driven image generation, which
 // runs over REST rather than the chat WebSocket, so its turns still persist).
@@ -163,6 +167,11 @@ api.post("/sessions/:id/model", (req, res) => {
 });
 api.post("/sessions/:id/title", (req, res) => {
   sessions.renameSession(req.params.id, String(req.body.title ?? "").slice(0, 80));
+  res.json({ ok: true });
+});
+api.post("/sessions/:id/mode", (req, res) => {
+  const m = req.body.mode;
+  sessions.setSessionMode(req.params.id, m === "image" || m === "video" ? m : "chat");
   res.json({ ok: true });
 });
 

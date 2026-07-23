@@ -13,11 +13,11 @@ type Item =
   | { kind: "images"; images: string[] }
   | { kind: "approval"; id: string; action: string; risk: string; detail?: string; resolved?: "yes" | "no" };
 
-interface ImgModel { engine: string; id: string; label: string; needsKey?: string; local?: boolean }
+interface ImgModel { engine: string; id: string; label: string; needsKey?: string; local?: boolean; video?: boolean }
 
 export function Chat({
   root, session, sessions, mode, onSelectSession, socket, providers, projectName, git, onCommit, onOpenPanel, onOpenProject,
-  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl, contentOverride, imageMode,
+  onTitle, onDiffApplied, onTerminal, onGit, onPreview, previewUrl, contentOverride, imageMode, videoMode, onMarkMode,
 }: {
   root: string;
   session: ChatSession | null;
@@ -39,6 +39,8 @@ export function Chat({
   previewUrl: string;
   contentOverride?: React.ReactNode;
   imageMode?: boolean;
+  videoMode?: boolean; // within imageMode: show 🎬 video models instead of 🎨 image ones
+  onMarkMode?: (mode: "image" | "video") => void;
 }) {
   const sessionId = session?.id ?? null;
   const [items, setItems] = useState<Item[]>([]);
@@ -63,15 +65,21 @@ export function Chat({
   const logRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load free image engines when in image mode.
+  // Load free image/video engines when in image mode.
   useEffect(() => {
     if (!imageMode || imgEngines.length) return;
-    api.imageEngines().then((list) => {
-      setImgEngines(list);
-      if (list.length && !imgSel) setImgSel(`${list[0].engine}::${list[0].id}`);
-    }).catch(() => {});
+    api.imageEngines().then(setImgEngines).catch(() => {});
+  }, [imageMode, imgEngines.length]);
+
+  // Keep the selection matching the mode: 🎬 models in video, 🎨 models otherwise.
+  useEffect(() => {
+    if (!imageMode || !imgEngines.length) return;
+    const pool = imgEngines.filter((m) => (videoMode ? m.video : !m.video));
+    if (pool.length && !pool.some((m) => `${m.engine}::${m.id}` === imgSel)) {
+      setImgSel(`${pool[0].engine}::${pool[0].id}`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageMode]);
+  }, [imageMode, videoMode, imgEngines]);
 
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
@@ -87,9 +95,11 @@ export function Chat({
   useEffect(() => { localStorage.setItem("bypass", bypass ? "1" : "0"); }, [bypass]);
   useEffect(() => { localStorage.setItem("lite", lite ? "1" : "0"); }, [lite]);
 
-  // Hydrate the transcript when switching sessions.
+  // Hydrate the transcript when switching sessions. Clear immediately so the
+  // previous session's messages never linger while the new ones load.
   useEffect(() => {
-    if (!sessionId) { setItems([]); return; }
+    setItems([]);
+    if (!sessionId) return;
     api.messages(sessionId).then((msgs) => {
       setItems(msgs
         .filter((m) => m.role === "user" || m.role === "assistant")
@@ -184,12 +194,14 @@ export function Chat({
     const p = input.trim();
     if (!p || busy || !imgSel) return;
     const [engine, model] = imgSel.split("::");
-    const baseImg = attachments[0] ? await downscale(attachments[0]) : undefined;
+    const isVideo = imgEngines.some((m) => m.engine === engine && m.id === model && m.video);
+    const baseImg = !isVideo && attachments[0] ? await downscale(attachments[0]) : undefined;
     if (!items.some((i) => i.kind === "user")) onTitle(p.length > 48 ? p.slice(0, 48) + "…" : p);
+    onMarkMode?.(isVideo ? "video" : "image"); // remember this is an image/video session
     push({ kind: "user", text: p, images: baseImg ? [baseImg] : undefined });
     setInput("");
     setAttachments([]);
-    setBusy(true); setStep(baseImg ? "editing image…" : "generating image…"); setElapsed(0);
+    setBusy(true); setStep(isVideo ? "generating video… (can take minutes)" : baseImg ? "editing image…" : "generating image…"); setElapsed(0);
     // Persist the prompt now so the turn survives even if generation fails or
     // the user navigates away mid-render.
     if (sessionId) api.addMessage(sessionId, { role: "user", content: p, images: baseImg ? [baseImg] : undefined }).catch(() => {});
@@ -269,6 +281,7 @@ export function Chat({
   const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
 
   const hero = items.length === 0 && !busy && !imageMode;
+  const selIsVideo = imgEngines.some((m) => `${m.engine}::${m.id}` === imgSel && m.video);
   const userName = localStorage.getItem("userName") || "";
   const fmtWhen = (iso: string) => {
     const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -307,7 +320,9 @@ export function Chat({
           <textarea
             value={input}
             placeholder={imageMode
-              ? (attachments.length
+              ? (selIsVideo
+                ? "Describe a short video to generate… (a few seconds; can take minutes)"
+                : attachments.length
                 ? "Describe how to edit this image… (e.g. make the sky purple, remove the car)"
                 : "Describe an image to generate… (or upload/paste one to edit)")
               : "Describe a task or ask a question…"}
@@ -337,14 +352,16 @@ export function Chat({
               )}
             </div>
 
-            <button className="cc-icon" title={imageMode ? "Upload an image to edit/modify" : "Attach image"} onClick={() => fileInputRef.current?.click()}>🖼</button>
+            {!videoMode && <button className="cc-icon" title={imageMode ? "Upload an image to edit/modify" : "Attach image"} onClick={() => fileInputRef.current?.click()}>🖼</button>}
 
             {imageMode && (
               <>
-                <select className="model-pick" style={{ maxWidth: 260 }} value={imgSel} onChange={(e) => setImgSel(e.target.value)} title="Image model">
-                  {imgEngines.map((m) => <option key={`${m.engine}::${m.id}`} value={`${m.engine}::${m.id}`}>🎨 {m.label}</option>)}
+                <select className="model-pick" style={{ maxWidth: 260 }} value={imgSel} onChange={(e) => setImgSel(e.target.value)} title={videoMode ? "Video model" : "Image model"}>
+                  {imgEngines.filter((m) => (videoMode ? m.video : !m.video)).map((m) => (
+                    <option key={`${m.engine}::${m.id}`} value={`${m.engine}::${m.id}`}>{videoMode ? "" : "🎨 "}{m.label}</option>
+                  ))}
                 </select>
-                <button className="cc-icon" title="Image engine setup (free tokens / local URLs)" onClick={() => setImgSetup((v) => !v)}>⚙</button>
+                <button className="cc-icon" title="Engine setup (free tokens / local URLs)" onClick={() => setImgSetup((v) => !v)}>⚙</button>
               </>
             )}
 
@@ -418,10 +435,17 @@ export function Chat({
           <div className="cc-dash-list">
             {sessions.slice(0, 10).map((s) => (
               <div key={s.id} className={`cc-scard ${session?.id === s.id ? "active" : ""}`} onClick={() => onSelectSession(s)}>
-                <span className="cc-scard-dot" />
-                <span className="cc-scard-title">{s.title}</span>
-                <span className="cc-scard-proj">{projOf(s.projectRoot)}</span>
-                <span className="cc-scard-when">{fmtWhen(s.updatedAt)}</span>
+                <span className="cc-scard-ic">{s.mode === "image" ? "🎨" : s.mode === "video" ? "🎬" : mode === "code" ? "📁" : "💬"}</span>
+                <div className="cc-scard-main">
+                  <div className="cc-scard-top">
+                    <span className="cc-scard-title">{s.title}</span>
+                    <span className="cc-scard-when">{fmtWhen(s.updatedAt)}</span>
+                  </div>
+                  <div className="cc-scard-sub">
+                    {s.preview ?? (projOf(s.projectRoot) || "empty chat")}
+                    {s.msgCount != null && s.msgCount > 0 && <span className="cc-scard-count"> · {s.msgCount} msg</span>}
+                  </div>
+                </div>
                 <span className="cc-scard-arrow">›</span>
               </div>
             ))}
@@ -431,12 +455,14 @@ export function Chat({
       ) : null}
       <div className="cc-log" ref={logRef} style={hero ? { flex: "0 0 auto", display: "none" } : undefined}>
         <div className="cc-col">
-          {imageMode && items.length === 0 && !busy && (
+          {imageMode && items.length === 0 && !busy && (videoMode ? (
+            <div className="cc-empty"><div className="cc-empty-title">🎬 Generate a video</div><div className="hint">Describe a short clip below and press Enter — e.g. “a cat walking in the rain”. Needs a free Hugging Face token or local ComfyUI (⚙). Takes a few minutes.</div></div>
+          ) : (
             <div className="cc-empty"><div className="cc-empty-title">🎨 Generate or edit an image</div><div className="hint">Type a description below and press Enter — or upload/paste a photo (🖼) and tell it what to change. After a result, hit ✎ Edit on it to keep adjusting.</div></div>
-          )}
+          ))}
           {items.map((it, i) => (
             <ChatItem key={i} item={it} onResolve={resolveApproval}
-              onEditImage={imageMode ? (src) => { setAttachments([src]); } : undefined} />
+              onEditImage={imageMode && !videoMode ? (src) => { setAttachments([src]); } : undefined} />
           ))}
 
           {busy && (
@@ -466,6 +492,7 @@ function ImgSetup({ onClose }: { onClose: () => void }) {
     { key: "hfToken", label: "Hugging Face token", hint: "free — huggingface.co/settings/tokens" },
     { key: "a1111Url", label: "AUTOMATIC1111 / Forge URL", hint: "local — default http://127.0.0.1:7860" },
     { key: "comfyUrl", label: "ComfyUI URL", hint: "local — default http://127.0.0.1:8188" },
+    { key: "comfyVideoWorkflow", label: "ComfyUI video workflow (JSON)", hint: 'export any T2V flow in API format, put {PROMPT} as the prompt text', multi: true },
   ];
   const [vals, setVals] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -482,10 +509,16 @@ function ImgSetup({ onClose }: { onClose: () => void }) {
       {keys.map((k) => (
         <label key={k.key} className="img-setup-row">
           <span>{k.label} <span className="hint">· {k.hint}</span></span>
-          <input type={k.key.endsWith("Token") ? "password" : "text"} value={vals[k.key] ?? ""}
-            placeholder={k.hint}
-            onChange={(e) => setVals((v) => ({ ...v, [k.key]: e.target.value }))}
-            onBlur={(e) => api.setSetting(k.key, e.target.value.trim()).catch(() => {})} />
+          {(k as any).multi ? (
+            <textarea rows={3} value={vals[k.key] ?? ""} placeholder={k.hint}
+              onChange={(e) => setVals((v) => ({ ...v, [k.key]: e.target.value }))}
+              onBlur={(e) => api.setSetting(k.key, e.target.value.trim()).catch(() => {})} />
+          ) : (
+            <input type={k.key.endsWith("Token") ? "password" : "text"} value={vals[k.key] ?? ""}
+              placeholder={k.hint}
+              onChange={(e) => setVals((v) => ({ ...v, [k.key]: e.target.value }))}
+              onBlur={(e) => api.setSetting(k.key, e.target.value.trim()).catch(() => {})} />
+          )}
         </label>
       ))}
     </div>
@@ -529,7 +562,12 @@ function ChatItem({ item, onResolve, onEditImage }: { item: Item; onResolve: (id
       <div className="msg assistant">
         <div className="who">Image</div>
         <div className="gen-imgs">
-          {item.images.map((src, i) => (
+          {item.images.map((src, i) => src.startsWith("data:video") ? (
+            <div className="gen-img" key={i}>
+              <video src={src} controls loop muted playsInline />
+              <a className="gen-dl" href={src} download={`video-${i}.mp4`} title="Download video">⬇</a>
+            </div>
+          ) : (
             <div className="gen-img" key={i}>
               <a href={src} download={`image-${i}.png`} title="Click to download"><img src={src} alt="generated" /></a>
               {onEditImage && (

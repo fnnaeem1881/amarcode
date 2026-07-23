@@ -39,6 +39,7 @@ export function App() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showImageGen, setShowImageGen] = useState(false);
+  const [showVideoGen, setShowVideoGen] = useState(false);
   const [showIDE, setShowIDE] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">(() => (localStorage.getItem("theme") as "dark" | "light") || "dark");
@@ -67,7 +68,18 @@ export function App() {
     // Load every session across all projects (Claude-Code-style global list).
     api.allSessions().then(async (list) => {
       setAllSessions(list);
-      // Open in Home with the most recent home session (or a fresh one).
+      // Deep link: #s/<id> reopens that exact session (with its tab + mode).
+      const target = /^#s\/(.+)$/.exec(location.hash)?.[1];
+      const linked = target ? list.find((s) => s.id === target) : undefined;
+      if (linked) {
+        setSidebarTab(linked.kind ?? "code");
+        if (linked.mode === "image") setShowImageGen(true);
+        else if (linked.mode === "video") setShowVideoGen(true);
+        if ((linked.kind ?? "code") === "code" && linked.projectRoot) setRoot(linked.projectRoot);
+        setSession(linked);
+        return;
+      }
+      // Otherwise open in Home with the most recent home session (or a fresh one).
       const home = list.filter((s) => (s.kind ?? "code") === "home");
       if (home.length) setSession(home[0]);
       else {
@@ -77,6 +89,25 @@ export function App() {
       }
     }).catch(() => {});
   }, []);
+
+  // Keep the URL in sync so every session has its own address (#s/<id>).
+  useEffect(() => {
+    if (session) history.replaceState(null, "", `#s/${session.id}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+
+  // Opening a session URL in the running app (paste/back/forward) switches to it.
+  useEffect(() => {
+    const onHash = () => {
+      const id = /^#s\/(.+)$/.exec(location.hash)?.[1];
+      if (!id || session?.id === id) return;
+      const s = allSessions.find((x) => x.id === id);
+      if (s) selectSession(s);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSessions, session?.id]);
 
   useEffect(() => {
     if (root) { localStorage.setItem("root", root); void loadProjectData(root); }
@@ -123,7 +154,7 @@ export function App() {
   }
 
   // Return to the chat view (used whenever a session/project action happens).
-  function showChat() { setShowPreview(false); setShowImageGen(false); setShowIDE(false); }
+  function showChat() { setShowPreview(false); setShowImageGen(false); setShowVideoGen(false); setShowIDE(false); }
 
   // Open a project from the picker: switch root and select/create its session.
   async function openProjectFromPicker(dir: string) {
@@ -143,13 +174,41 @@ export function App() {
     api.allSessions().then(setAllSessions).catch(() => {});
   }
 
-  // Selecting a session switches to its tab (home/code) and project.
+  // Selecting a session switches to its tab (home/code), project, and mode —
+  // image/video sessions reopen straight into their generator view.
   function selectSession(s: ChatSession) {
     showChat();
     setShowIDE(false);
+    if (s.mode === "image") setShowImageGen(true);
+    else if (s.mode === "video") setShowVideoGen(true);
     setSidebarTab(s.kind ?? "code");
     setSession(s);
     if ((s.kind ?? "code") === "code" && s.projectRoot && s.projectRoot !== root) setRoot(s.projectRoot);
+  }
+
+  // Remember that the active session is an image/video session (persisted).
+  function markSessionMode(mode: "image" | "video") {
+    if (!session || session.mode === mode) return;
+    setAllSessions((xs) => xs.map((s) => (s.id === session.id ? { ...s, mode } : s)));
+    setSession((s) => (s ? { ...s, mode } : s));
+    api.setSessionMode(session.id, mode).catch(() => {});
+  }
+
+  // 🎨 Image / 🎬 Video open a FRESH session of that type (reusing an empty one),
+  // so an old chat's messages never sit under the generator view.
+  async function newMediaSession(mode: "image" | "video") {
+    setShowIDE(false); setShowPreview(false);
+    setShowImageGen(mode === "image"); setShowVideoGen(mode === "video");
+    setSidebarTab("home");
+    // Reuse an existing empty session of the same type instead of piling up blanks.
+    const empty = allSessions.find((s) => (s.kind ?? "code") === "home" && s.mode === mode && !s.msgCount);
+    if (empty) {
+      const msgs = await api.messages(empty.id).catch(() => []);
+      if (msgs.length === 0) { setSession(empty); return; }
+    }
+    const s = await api.createSession("", mode === "image" ? "New image" : "New video", "home", mode);
+    setAllSessions((xs) => [s, ...xs]);
+    setSession(s);
   }
 
   async function newSession() {
@@ -229,7 +288,7 @@ export function App() {
 
   async function switchTab(tab: "home" | "code") {
     setSidebarTab(tab);
-    setShowIDE(false); setShowPreview(false); setShowImageGen(false);
+    setShowIDE(false); setShowPreview(false); setShowImageGen(false); setShowVideoGen(false);
     const visible = allSessions.filter((s) => (s.kind ?? "code") === tab);
     if (visible.length) {
       setSession(visible[0]);
@@ -255,8 +314,9 @@ export function App() {
         onSelectSession={selectSession} onNewSession={newSession} onDeleteSession={deleteSession} onRenameSession={renameSession} onDeleteSessions={deleteSessions}
         metadata={metadata} files={files} onOpenFile={openFile} activePath={activePath}
         onOpenProject={() => { setPickerForNew(false); setShowPicker(true); }} onSettings={() => setShowSettings(true)}
-        onIDE={() => { setShowIDE(true); setShowImageGen(false); setShowPreview(false); }}
-        onImage={() => { setShowImageGen(true); setShowIDE(false); setShowPreview(false); }}
+        onIDE={() => { setShowIDE(true); setShowImageGen(false); setShowVideoGen(false); setShowPreview(false); }}
+        onImage={() => { void newMediaSession("image"); }}
+        onVideo={() => { void newMediaSession("video"); }}
       />
 
       <div className="cc-main">
@@ -272,7 +332,8 @@ export function App() {
           </button>
           {sidebarTab === "code" && <>
             <button className={`cc-icon ${showIDE ? "on" : ""}`} title="IDE — browse & edit files" onClick={() => { setShowIDE((v) => !v); setShowImageGen(false); setShowPreview(false); }}>{showIDE ? "✕ Close IDE" : "⌨ IDE"}</button>
-            <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { setShowImageGen((v) => !v); setShowPreview(false); setShowIDE(false); }}>🎨 Image</button>
+            <button className={`cc-icon ${showImageGen ? "on" : ""}`} title="Generate images (text-to-image)" onClick={() => { void newMediaSession("image"); }}>🎨 Image</button>
+            <button className={`cc-icon ${showVideoGen ? "on" : ""}`} title="Generate videos (text-to-video)" onClick={() => { void newMediaSession("video"); }}>🎬 Video</button>
             <button className={`cc-icon ${showPreview ? "on" : ""}`} title="Web preview (embedded browser)" onClick={() => { setShowPreview((v) => !v); setShowImageGen(false); setShowIDE(false); }}>🌐 Preview</button>
             <button className="cc-icon" title="Toggle panel (terminal / git / plan)" onClick={() => setShowDrawer((v) => !v)}>⌗</button>
           </>}
@@ -309,7 +370,9 @@ export function App() {
               onGit={() => setGitRefreshKey((k) => k + 1)}
               onPreview={(url) => { setPreviewUrl(url); setShowPreview(true); }}
               previewUrl={previewUrl}
-              imageMode={showImageGen}
+              imageMode={showImageGen || showVideoGen}
+              videoMode={showVideoGen}
+              onMarkMode={markSessionMode}
               contentOverride={
                 showIDE ? <IDE root={root} files={files} activePath={activePath} content={content} onOpenFile={openFile} onSaved={() => setGitRefreshKey((k) => k + 1)} />
                 : showPreview ? <WebPreview root={root} url={previewUrl} onUrlChange={setPreviewUrl} />
